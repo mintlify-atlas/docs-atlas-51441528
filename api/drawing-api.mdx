@@ -1,0 +1,354 @@
+---
+title: 'Drawing Tool APIs'
+description: 'API reference for drawing tools including LineDrawing, FibonacciRetraceDrawing, and more'
+---
+
+## Drawing Base Class
+
+Abstract base class for all drawing tools. Provides common functionality for handle management, hit testing, and rendering.
+
+### Constructor
+
+```typescript
+constructor(
+  xc: ChartXControl,
+  yc: ChartYControl,
+  points?: TPoint[]
+)
+```
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for coordinate transformations
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for coordinate transformations
+</ParamField>
+
+<ParamField path="points" type="TPoint[]">
+  Optional array of points to initialize the drawing
+</ParamField>
+
+### TPoint Interface
+
+```typescript
+type TPoint = {
+  time: number,    // Unix timestamp
+  value: number    // Price or indicator value
+}
+```
+
+### Properties
+
+<ResponseField name="nHandles" type="number">
+  Number of handles for the drawing. Set to `0` for variable-handle drawings (e.g., polyline).
+</ResponseField>
+
+<ResponseField name="handles" type="Handle[]">
+  Array of handle objects representing control points
+</ResponseField>
+
+<ResponseField name="currHandleIdx" type="number">
+  Index of the currently active handle during creation or editing
+</ResponseField>
+
+<ResponseField name="isCompleted" type="boolean">
+  Whether the drawing has been fully created
+</ResponseField>
+
+<ResponseField name="isAnchored" type="boolean">
+  Whether the current handle has been anchored
+</ResponseField>
+
+### Abstract Methods
+
+<ParamField path="init" type="() => void" required>
+  Initialize the drawing. Must set `nHandles` to the required number of control points.
+</ParamField>
+
+<ParamField path="plotDrawing" type="() => Seg[]" required>
+  Render the drawing and return an array of SVG segments (Path, Texts, Circle, Rect, etc.).
+</ParamField>
+
+<ParamField path="hits" type="(x: number, y: number) => boolean" required>
+  Test if a point (x, y) is on or near the drawing for selection.
+</ParamField>
+
+### Methods
+
+<ParamField path="anchorHandle" type="(point: TPoint) => boolean">
+  Anchor the current handle at the given point. Returns `true` if the drawing is completed.
+</ParamField>
+
+<ParamField path="stretchCurrentHandle" type="(point: TPoint) => JSX.Element">
+  Update the current handle position while dragging. Returns the rendered drawing.
+</ParamField>
+
+<ParamField path="dragDrawing" type="(point: TPoint) => JSX.Element">
+  Move the entire drawing by dragging. Returns the rendered drawing.
+</ParamField>
+
+<ParamField path="recordHandlesWhenMousePressed" type="(point: TPoint) => void">
+  Record handle positions before dragging starts.
+</ParamField>
+
+<ParamField path="insertHandle" type="(point: TPoint) => number">
+  Insert a new handle at the given point (for variable-handle drawings). Returns the new handle index.
+</ParamField>
+
+<ParamField path="deleteHandleAt" type="(handleIdx: number) => void">
+  Delete a handle at the specified index.
+</ParamField>
+
+<ParamField path="getHandleIdxAt" type="(x: number, y: number) => number">
+  Get the index of the handle at position (x, y), or -1 if none found.
+</ParamField>
+
+<ParamField path="renderDrawing" type="(key: Key) => JSX.Element">
+  Render the drawing without handles.
+</ParamField>
+
+<ParamField path="renderDrawingWithHandles" type="(key: Key) => JSX.Element">
+  Render the drawing with visible handles for editing.
+</ParamField>
+
+### Helper Methods
+
+<ParamField path="plotLine" type="(baseX: number, baseY: number, k: number, path: Path) => void">
+  Plot an infinite line through the chart given a base point and slope.
+</ParamField>
+
+<ParamField path="plotVerticalLine" type="(bar: number, path: Path) => void">
+  Plot a vertical line at the specified bar index.
+</ParamField>
+
+<ParamField path="distanceToLine" type="(x: number, y: number, baseX: number, baseY: number, k: number) => number">
+  Calculate the perpendicular distance from a point to a line.
+</ParamField>
+
+Source: `Drawing.tsx:14-269`
+
+---
+
+## LineDrawing
+
+Draws a trend line between two points, optionally extended infinitely.
+
+### Properties
+
+<ResponseField name="isExtended" type="boolean" default="true">
+  Whether the line extends infinitely in both directions
+</ResponseField>
+
+<ResponseField name="nHandles" type="number" default="2">
+  Always uses 2 handles (start and end points)
+</ResponseField>
+
+### Example Usage
+
+```typescript
+import { LineDrawing } from './lib/charting/drawing/LineDrawing';
+
+const line = new LineDrawing(xc, yc);
+line.anchorHandle({ time: 1678886400000, value: 100 });
+line.anchorHandle({ time: 1678972800000, value: 105 });
+```
+
+### Methods
+
+<ParamField path="hits" type="(x: number, y: number) => boolean">
+  Returns true if the point is within 4 pixels of the line.
+  
+  Source: `LineDrawing.tsx:12-30`
+</ParamField>
+
+<ParamField path="plotDrawing" type="() => Seg[]">
+  Renders the line. If `isExtended` is true, the line extends across the entire chart. Otherwise, it only draws between the two handles.
+  
+  Source: `LineDrawing.tsx:32-54`
+</ParamField>
+
+---
+
+## FibonacciRetraceDrawing
+
+Draws Fibonacci retracement levels between two price points.
+
+### Fibonacci Levels
+
+Draws horizontal lines at the following retracement levels:
+- 0% (0.0)
+- 23.6% (0.236)
+- 38.2% (0.382)
+- 50% (0.500)
+- 61.8% (0.618)
+- 76.3% (0.763)
+- 100% (1.0)
+- 161.8% (1.618)
+- 200% (2.0)
+- 261.8% (2.618)
+- 300% (3.0)
+- 423.7% (4.237)
+
+### Properties
+
+<ResponseField name="nHandles" type="number" default="2">
+  Always uses 2 handles (start and end points)
+</ResponseField>
+
+### Example Usage
+
+```typescript
+import { FibonacciRetraceDrawing } from './lib/charting/drawing/FibonacciRetraceDrawing';
+
+const fib = new FibonacciRetraceDrawing(xc, yc);
+fib.anchorHandle({ time: 1678886400000, value: 95 });  // Swing low
+fib.anchorHandle({ time: 1678972800000, value: 110 }); // Swing high
+```
+
+### Methods
+
+<ParamField path="hits" type="(x: number, y: number) => boolean">
+  Returns true if the point is within 4 pixels of any Fibonacci level line and within the horizontal range of the drawing.
+  
+  Source: `FibonacciRetraceDrawing.tsx:26-51`
+</ParamField>
+
+<ParamField path="plotDrawing" type="() => Seg[]">
+  Renders horizontal lines at each Fibonacci level with percentage labels. Lines are only drawn if they fit within the chart canvas.
+  
+  Source: `FibonacciRetraceDrawing.tsx:53-83`
+</ParamField>
+
+Source: `FibonacciRetraceDrawing.tsx:5-88`
+
+---
+
+## Available Drawing Tools
+
+The following drawing tools can be created using the `createDrawing` factory function:
+
+### createDrawing
+
+```typescript
+function createDrawing(
+  id: string,
+  xc: ChartXControl,
+  yc: ChartYControl
+): Drawing | undefined
+```
+
+### Supported Drawing IDs
+
+<ResponseField name="line" type="string">
+  Creates a `LineDrawing` - trend line between two points
+</ResponseField>
+
+<ResponseField name="fibonacci_retrace" type="string">
+  Creates a `FibonacciRetraceDrawing` - horizontal Fibonacci retracement levels
+</ResponseField>
+
+<ResponseField name="fibonacci_retrace_v" type="string">
+  Creates a `FibonacciRetraceVerticalDrawing` - vertical Fibonacci retracement levels
+</ResponseField>
+
+<ResponseField name="fibonacci_timezone" type="string">
+  Creates a `FibonacciTimeZoneDrawing` - vertical lines at Fibonacci time intervals
+</ResponseField>
+
+<ResponseField name="gann_angles" type="string">
+  Creates a `GannAnglesDrawing` - Gann fan angles
+</ResponseField>
+
+<ResponseField name="parallel" type="string">
+  Creates a `ParallelDrawing` - parallel trend channel
+</ResponseField>
+
+<ResponseField name="polyline" type="string">
+  Creates a `PolylineDrawing` - multi-point polyline (variable handles)
+</ResponseField>
+
+### Example
+
+```typescript
+import { createDrawing } from './lib/charting/drawing/Drawings';
+
+// Create a line drawing
+const drawing = createDrawing('line', xc, yc);
+
+// Create a Fibonacci retracement
+const fib = createDrawing('fibonacci_retrace', xc, yc);
+
+// Create a parallel channel
+const channel = createDrawing('parallel', xc, yc);
+```
+
+Source: `Drawings.ts:11-37`
+
+---
+
+## Handle Class
+
+Represents a control point for a drawing tool.
+
+### Properties
+
+<ResponseField name="point" type="TPoint">
+  The time and value coordinates of this handle
+</ResponseField>
+
+### Constructor
+
+```typescript
+constructor(
+  xc: ChartXControl,
+  yc: ChartYControl,
+  point?: TPoint
+)
+```
+
+### Methods
+
+<ParamField path="hits" type="(x: number, y: number) => boolean">
+  Returns true if the point is within 8 pixels of the handle center.
+  
+  Source: `Drawing.tsx:301-307`
+</ParamField>
+
+<ParamField path="render" type="(key: string) => JSX.Element">
+  Renders the handle as a circle with 5-pixel radius.
+  
+  Source: `Drawing.tsx:309-313`
+</ParamField>
+
+### Usage Notes
+
+- Handles are rendered when a drawing is selected or being edited
+- Users can drag handles to reshape the drawing
+- For variable-handle drawings (like polyline), Ctrl+Click can insert/delete handles
+
+Source: `Drawing.tsx:271-323`
+
+---
+
+## Drawing Interaction
+
+### Creating a Drawing
+
+1. Call `createDrawing()` with the desired drawing ID
+2. User clicks to call `anchorHandle()` for each required point
+3. Drawing is completed when all handles are anchored
+4. For variable-handle drawings, Ctrl+Click completes the drawing
+
+### Editing a Drawing
+
+1. Click on a drawing to select it (calls `hits()` to detect)
+2. Drag handles to reshape using `stretchCurrentHandle()`
+3. Drag the drawing body to move it using `dragDrawing()`
+4. For polyline: Ctrl+Click to insert/delete handles
+
+### Deleting a Drawing
+
+Selected drawings can be deleted through the UI, removing them from the drawings array in ChartView.
+
+Source: `ChartView.tsx:618-931`

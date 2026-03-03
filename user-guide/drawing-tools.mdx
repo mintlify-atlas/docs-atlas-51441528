@@ -1,0 +1,348 @@
+---
+title: 'Drawing Tools'
+description: 'Master technical analysis drawing tools including Fibonacci retracements, Gann angles, and more'
+---
+
+## Overview
+
+VibeTrader provides a comprehensive set of drawing tools for technical analysis. All drawing tools share a common interaction model based on handles (anchor points) that you place and manipulate on the chart.
+
+## Available Drawing Tools
+
+<CardGroup cols={2}>
+  <Card title="Line" icon="minus">
+    Simple line tool for drawing trend lines between two points.
+  </Card>
+  
+  <Card title="Parallel Lines" icon="bars">
+    Draw parallel channel lines for identifying support and resistance zones.
+  </Card>
+  
+  <Card title="Polyline" icon="bezier-curve">
+    Multi-segment line with variable number of handles for complex patterns.
+  </Card>
+  
+  <Card title="Fibonacci Retracement" icon="chart-line">
+    Standard Fibonacci retracement levels (23.6%, 38.2%, 50%, 61.8%, etc.).
+  </Card>
+  
+  <Card title="Fibonacci Retrace Vertical" icon="arrows-up-down">
+    Vertical Fibonacci retracement for time-based analysis.
+  </Card>
+  
+  <Card title="Fibonacci Time Zone" icon="clock">
+    Fibonacci time zones for identifying potential reversal times.
+  </Card>
+  
+  <Card title="Gann Angles" icon="compass-drafting">
+    Gann fan with multiple angle lines (1x1, 1x2, 2x1, 1x3, 3x1, etc.).
+  </Card>
+</CardGroup>
+
+## Drawing Tool Usage
+
+### Creating Drawings
+
+<Steps>
+  <Step title="Select Drawing Tool">
+    Choose your desired drawing tool from the toolbar. The tool ID format is used internally:
+    
+    - `line` - Line drawing
+    - `parallel` - Parallel lines
+    - `polyline` - Polyline
+    - `fibonacci_retrace` - Fibonacci retracement
+    - `fibonacci_retrace_v` - Vertical Fibonacci
+    - `fibonacci_timezone` - Fibonacci time zones
+    - `gann_angles` - Gann angles
+  </Step>
+  
+  <Step title="Place Anchor Points">
+    Click on the chart to place anchor points (handles). Most tools require 2 handles, except polyline which supports unlimited handles.
+  </Step>
+  
+  <Step title="Complete Drawing">
+    For fixed-handle drawings (2 handles), the drawing completes automatically after placing the second point.
+    
+    For variable-handle drawings (polyline), press `Ctrl + Click` to complete the drawing.
+  </Step>
+</Steps>
+
+### Mouse Controls
+
+<AccordionGroup>
+  <Accordion title="Click on Drawing">
+    Select a drawing to display its handles and enable editing.
+  </Accordion>
+  
+  <Accordion title="Ctrl + Click (Complete)">
+    Complete a variable-handle drawing like polyline when you're done adding points.
+  </Accordion>
+  
+  <Accordion title="Ctrl + Click on Handle">
+    Remove a specific handle from a variable-handle drawing.
+  </Accordion>
+  
+  <Accordion title="Ctrl + Drag on Segment">
+    Insert a new handle at the cursor position on a polyline segment.
+  </Accordion>
+  
+  <Accordion title="Drag Drawing">
+    Click and drag a selected drawing to move it to a different position on the chart while maintaining its shape.
+  </Accordion>
+</AccordionGroup>
+
+### Keyboard Controls
+
+<CardGroup cols={2}>
+  <Card title="ESC" icon="xmark">
+    Unselect the currently selected drawing.
+  </Card>
+  
+  <Card title="DELETE" icon="trash">
+    Delete the currently selected drawing.
+  </Card>
+</CardGroup>
+
+## Fibonacci Retracement
+
+<img src="/images/fibonacci-example.png" alt="Fibonacci Retracement" />
+
+The Fibonacci retracement tool displays the following levels:
+
+<CodeGroup>
+```typescript Fibonacci Levels
+const FN = [
+    0,       // 0%
+    0.236,   // 23.6%
+    0.382,   // 38.2%
+    0.500,   // 50%
+    0.618,   // 61.8% (Golden Ratio)
+    0.763,   // 76.3%
+    1,       // 100%
+    1.618,   // 161.8% (Extension)
+    2.0,     // 200%
+    2.618,   // 261.8%
+    3.0,     // 300%
+    4.237,   // 423.7%
+]
+```
+</CodeGroup>
+
+### How to Use
+
+1. **Identify Trend**: Find a significant price move (swing high to swing low, or vice versa)
+2. **Place First Handle**: Click at the start of the move
+3. **Place Second Handle**: Click at the end of the move
+4. **Analyze Levels**: The tool automatically draws horizontal lines at each Fibonacci level with percentage labels
+
+<Info>
+Fibonacci levels automatically stop rendering when they exceed the visible chart area to maintain performance.
+</Info>
+
+## Gann Angles
+
+Gann angles help identify potential support and resistance based on geometric relationships.
+
+### Angle Multiples
+
+The Gann tool draws angles at these multiples of the base angle:
+
+- **1x1**: Main diagonal (45-degree equivalent in price/time space)
+- **1x2**: Half the slope of 1x1
+- **2x1**: Double the slope of 1x1  
+- **1x3**: One-third the slope
+- **3x1**: Triple the slope
+
+### Frame Structure
+
+The Gann tool also draws:
+- Diagonal lines connecting opposite corners
+- Horizontal lines at top and bottom
+- Vertical lines at left and right
+
+<Tip>
+Gann angles are drawn in all four quadrants from the anchor point, providing a complete fan of angles for analysis.
+</Tip>
+
+## Polyline Tool
+
+The polyline is a special variable-handle drawing tool:
+
+### Features
+
+- **Unlimited Points**: Add as many anchor points as needed
+- **Dynamic Editing**: Insert handles by `Ctrl + Drag` on segments
+- **Handle Removal**: `Ctrl + Click` on handles to remove them
+- **Flexible Completion**: `Ctrl + Click` to complete when done
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Complex Patterns" icon="shapes">
+    Draw head and shoulders, triangles, or other complex chart patterns.
+  </Card>
+  
+  <Card title="Trend Channels" icon="layer-group">
+    Outline multi-touch trend channels with precision.
+  </Card>
+</CardGroup>
+
+## Drawing State System
+
+Each drawing has several states:
+
+<Steps>
+  <Step title="In Drawing">
+    The drawing is being created. User is placing handles.
+  </Step>
+  
+  <Step title="Anchored">
+    A handle has been placed and locked in position.
+  </Step>
+  
+  <Step title="Completed">
+    All required handles are placed. The drawing is finalized.
+  </Step>
+  
+  <Step title="Selected">
+    The drawing is selected for editing or deletion. Handles are visible.
+  </Step>
+</Steps>
+
+## Handle System
+
+Handles are the anchor points of drawings:
+
+### Handle Properties
+
+```typescript
+type TPoint = {
+    time: number,   // Timestamp of the handle
+    value: number   // Price/value of the handle
+}
+```
+
+### Visual Representation
+
+- Handles appear as **circles with 5-pixel radius**
+- Hit detection uses **8-pixel radius** for easier clicking
+- Handles are only visible when a drawing is selected
+
+### Handle Manipulation
+
+<CodeGroup>
+```typescript Stretching
+// While creating a drawing, the current handle follows the cursor
+stretchCurrentHandle(point: TPoint)
+```
+
+```typescript Dragging
+// Move the entire drawing by dragging
+dragDrawing(point: TPoint)
+// All handles maintain their relative positions
+```
+
+```typescript Inserting (Polyline)
+// Ctrl + Drag on a segment inserts a new handle
+insertHandle(point: TPoint)
+```
+</CodeGroup>
+
+## Hit Testing
+
+Each drawing tool implements custom hit detection:
+
+- **Lines**: 4-pixel distance threshold from the line
+- **Fibonacci**: 4-pixel vertical distance from each level line
+- **Gann**: 4-pixel distance from any angle line or frame element
+
+<Note>
+Hit testing ensures you can easily select drawings even with small or diagonal elements.
+</Note>
+
+## Coordinate System Integration
+
+Drawings integrate with the chart coordinate system:
+
+```typescript
+// Convert handle point to screen coordinates
+const x = xControl.xb(xControl.bt(handle.point.time))
+const y = yControl.yv(handle.point.value)
+
+// Convert screen coordinates back to point
+const time = xControl.tx(x)
+const value = yControl.vy(y)
+```
+
+### Time-Based vs Bar-Based
+
+<Warning>
+When dragging drawings, the system uses **bar-based movement** rather than time-based. This ensures drawings stay aligned with bars even in "trading date mode" where some calendar times may not have corresponding bars.
+</Warning>
+
+## Rendering System
+
+Drawings render as SVG elements:
+
+<CodeGroup>
+```typescript Normal Drawing
+// Unselected drawings render without handles
+renderDrawing(key: Key)
+```
+
+```typescript Selected Drawing
+// Selected drawings show highlighted path and handles
+renderDrawingWithHandles(key: Key)
+```
+</CodeGroup>
+
+### CSS Classes
+
+- `.drawing` - Normal drawing state
+- `.drawing-highlight` - Selected drawing (highlighted)
+- `.drawing-handle` - Handle circles
+- `.drawing-stretching` - Drawing being stretched
+- `.drawing-moving` - Drawing being dragged
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Placement Accuracy">
+    Zoom in before placing handles for precise alignment with specific price levels or time points.
+  </Accordion>
+  
+  <Accordion title="Drawing Organization">
+    Use ESC to deselect drawings after creation to keep the chart clean.
+  </Accordion>
+  
+  <Accordion title="Performance">
+    Avoid creating excessive drawings on a single chart. Remove outdated analysis to maintain performance.
+  </Accordion>
+  
+  <Accordion title="Color Coding">
+    Use different drawing types for different purposes (e.g., Fibonacci for retracements, lines for trends).
+  </Accordion>
+</AccordionGroup>
+
+## Technical Implementation
+
+All drawings extend the base `Drawing` class:
+
+```typescript
+abstract class Drawing {
+    abstract init(): void
+    abstract plotDrawing(): Seg[]
+    abstract hits(x: number, y: number): boolean
+    
+    // Common methods
+    anchorHandle(point: TPoint): boolean
+    stretchCurrentHandle(point: TPoint)
+    dragDrawing(point: TPoint)
+    renderDrawing(key: Key)
+    renderDrawingWithHandles(key: Key)
+}
+```
+
+<Tip>
+Developers can create custom drawing tools by extending the `Drawing` class and implementing the three abstract methods.
+</Tip>

@@ -1,0 +1,385 @@
+---
+title: 'Keyboard & Mouse Shortcuts'
+description: 'Complete reference for all keyboard shortcuts and mouse controls in VibeTrader'
+---
+
+## Quick Reference
+
+Master VibeTrader's interface with these keyboard shortcuts and mouse controls for efficient chart navigation and technical analysis.
+
+## Symbol & Timeframe Selection
+
+<CardGroup cols={2}>
+  <Card title="Select Symbol" icon="dollar-sign">
+    **Click on symbol** - Open symbol selector and switch to a different trading instrument
+  </Card>
+  
+  <Card title="Select Timeframe" icon="clock">
+    **Click on timeframe** - Change chart timeframe (1m, 5m, 1h, 1D, etc.)
+  </Card>
+</CardGroup>
+
+## Chart Navigation
+
+### Mouse Controls
+
+<Tabs>
+  <Tab title="Moving">
+    <ResponseField name="Drag" type="Mouse">
+      Click and drag anywhere on the chart to move horizontally through time. 
+      
+      **Use case**: Scroll through historical data without changing zoom level
+    </ResponseField>
+    
+    <ResponseField name="Wheel" type="Mouse">
+      Scroll the mouse wheel to move the chart left or right.
+      
+      **Speed**: 1 bar per increment (or 16.8% of visible bars when Space is held)
+    </ResponseField>
+  </Tab>
+  
+  <Tab title="Scaling">
+    <ResponseField name="Ctrl + Drag" type="Mouse + Keyboard">
+      Hold `Ctrl` and drag to scale the chart horizontally.
+      
+      **Effect**: Changes the number of visible bars and bar width dynamically
+    </ResponseField>
+    
+    <ResponseField name="Shift + Wheel" type="Mouse + Keyboard">
+      Hold `Shift` and scroll the mouse wheel to zoom in/out.
+      
+      **Effect**: Cycles through predefined bar width levels (0.00025px to 20px)
+    </ResponseField>
+  </Tab>
+  
+  <Tab title="Reference Cursor">
+    <ResponseField name="Double Click (Chart)" type="Mouse">
+      Double-click anywhere on the chart to place a reference cursor.
+      
+      **Purpose**: Mark a specific time/price point for analysis
+    </ResponseField>
+    
+    <ResponseField name="Double Click (Y-axis)" type="Mouse">
+      Double-click on the Y-axis to remove the reference cursor.
+      
+      **Alternative**: Press `ESC` key
+    </ResponseField>
+  </Tab>
+</Tabs>
+
+### Keyboard Controls
+
+<AccordionGroup>
+  <Accordion title="Arrow Keys - Navigation" icon="arrows-up-down">
+    <ParamField path="Left/Right Arrow" type="Keyboard">
+      Move the chart left or right by 1 bar (or 16.8% of visible bars when Space is held)
+      
+      ```
+      Left Arrow  → Move chart left (view older data)
+      Right Arrow → Move chart right (view newer data)
+      ```
+    </ParamField>
+    
+    <ParamField path="Up/Down Arrow" type="Keyboard">
+      Zoom in/out by changing bar width through predefined levels
+      
+      ```
+      Up Arrow   → Zoom in (increase bar width)
+      Down Arrow → Zoom out (decrease bar width)
+      ```
+    </ParamField>
+  </Accordion>
+  
+  <Accordion title="Ctrl + Arrows - Reference Cursor" icon="location-crosshairs">
+    <ParamField path="Ctrl + Left Arrow" type="Keyboard">
+      Move reference cursor one bar to the left
+    </ParamField>
+    
+    <ParamField path="Ctrl + Right Arrow" type="Keyboard">
+      Move reference cursor one bar to the right
+    </ParamField>
+    
+    <Note>
+    The chart automatically scrolls when the reference cursor approaches the edges, maintaining at least 1 bar padding on each side.
+    </Note>
+  </Accordion>
+  
+  <Accordion title="Space - Speed Toggle" icon="rocket">
+    <ParamField path="Space" type="Keyboard">
+      Toggle between normal and fast movement speed
+      
+      **Normal speed**: 1 bar per increment
+      
+      **Fast speed**: 16.8% of visible bars per increment (Math.floor(nBars * 0.168))
+    </ParamField>
+    
+    <Tip>
+    Hold Space while using arrow keys or mouse wheel for rapid navigation through long time periods.
+    </Tip>
+  </Accordion>
+  
+  <Accordion title="ESC - Cancel/Hide" icon="xmark">
+    <ParamField path="ESC" type="Keyboard">
+      Multi-purpose cancel key with context-aware behavior:
+      
+      1. **Remove reference cursor** (if active)
+      2. **Unselect drawing** (if a drawing is selected)
+      3. **Hide crosshair** (if visible)
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+## Drawing Tools
+
+### Mouse Controls
+
+<Tabs>
+  <Tab title="Selection">
+    <ResponseField name="Click on Drawing" type="Mouse">
+      Select a drawing to display its handles and enable editing mode.
+      
+      **Visual feedback**: Drawing is highlighted and handles (anchor points) appear
+    </ResponseField>
+  </Tab>
+  
+  <Tab title="Creation">
+    <ResponseField name="Click (Place Handles)" type="Mouse">
+      Click to place anchor points when creating a drawing.
+      
+      **Fixed-handle drawings** (2 points): Automatically complete after second click
+      
+      **Variable-handle drawings** (polyline): Continue clicking to add points
+    </ResponseField>
+    
+    <ResponseField name="Ctrl + Click (Complete)" type="Mouse + Keyboard">
+      Complete a variable-handle drawing (e.g., polyline).
+      
+      **Use when**: You're done adding points to a polyline
+    </ResponseField>
+  </Tab>
+  
+  <Tab title="Editing">
+    <ResponseField name="Drag Drawing" type="Mouse">
+      Click and drag a selected drawing to move it.
+      
+      **Behavior**: Maintains shape while moving to new position
+      
+      **Coordinate system**: Uses bar-based movement for accuracy
+    </ResponseField>
+    
+    <ResponseField name="Ctrl + Click on Handle" type="Mouse + Keyboard">
+      Remove a handle from a variable-handle drawing.
+      
+      **Applies to**: Polyline tool only
+    </ResponseField>
+    
+    <ResponseField name="Ctrl + Drag on Segment" type="Mouse + Keyboard">
+      Insert a new handle on a polyline segment.
+      
+      **How**: Hold Ctrl, click on a line segment, and drag to create a new anchor point
+    </ResponseField>
+  </Tab>
+</Tabs>
+
+### Keyboard Controls
+
+<CardGroup cols={2}>
+  <Card title="ESC - Unselect" icon="xmark">
+    Unselect the currently selected drawing.
+    
+    **Effect**: Handles disappear, drawing returns to normal state
+  </Card>
+  
+  <Card title="DELETE - Remove" icon="trash">
+    Delete the currently selected drawing.
+    
+    **Warning**: This action is immediate and cannot be undone!
+  </Card>
+</CardGroup>
+
+## Complete Shortcut Matrix
+
+### Mouse Shortcuts
+
+<ResponseExample>
+```plaintext MOUSE CONTROLS
+╔══════════════════════════════╦═══════════════════════════════════════╗
+║ Action                       ║ Description                           ║
+╠══════════════════════════════╬═══════════════════════════════════════╣
+║ Drag                         ║ Move chart horizontally               ║
+║ Wheel                        ║ Scroll chart left/right               ║
+║ Shift + Wheel                ║ Zoom in/out                           ║
+║ Ctrl + Drag                  ║ Scale chart                           ║
+║ Double Click (Chart)         ║ Place reference cursor                ║
+║ Double Click (Y-axis)        ║ Remove reference cursor               ║
+║ Click (Drawing)              ║ Select drawing                        ║
+║ Ctrl + Click                 ║ Complete variable-handle drawing      ║
+║ Ctrl + Click (Handle)        ║ Remove handle                         ║
+║ Ctrl + Drag (Segment)        ║ Insert handle                         ║
+╚══════════════════════════════╩═══════════════════════════════════════╝
+```
+</ResponseExample>
+
+### Keyboard Shortcuts
+
+<ResponseExample>
+```plaintext KEYBOARD CONTROLS
+╔══════════════════════════════╦═══════════════════════════════════════╗
+║ Key                          ║ Action                                ║
+╠══════════════════════════════╬═══════════════════════════════════════╣
+║ Left Arrow                   ║ Move chart left                       ║
+║ Right Arrow                  ║ Move chart right                      ║
+║ Up Arrow                     ║ Zoom in                               ║
+║ Down Arrow                   ║ Zoom out                              ║
+║ Ctrl + Left Arrow            ║ Move reference cursor left            ║
+║ Ctrl + Right Arrow           ║ Move reference cursor right           ║
+║ Space                        ║ Toggle fast/normal movement speed     ║
+║ ESC                          ║ Remove cursor / Unselect / Hide       ║
+║ DELETE                       ║ Delete selected drawing               ║
+╚══════════════════════════════╩═══════════════════════════════════════╝
+```
+</ResponseExample>
+
+## Advanced Usage Patterns
+
+### Efficient Chart Analysis Workflow
+
+<Steps>
+  <Step title="Quick Navigation">
+    Use `Shift + Wheel` to quickly zoom out and see the big picture, then zoom in on areas of interest.
+  </Step>
+  
+  <Step title="Precise Analysis">
+    Double-click to place a reference cursor on a key price level, then use `Ctrl + Arrow Keys` to step through time while keeping that level marked.
+  </Step>
+  
+  <Step title="Pattern Drawing">
+    Select a drawing tool, click to place points, use `Ctrl + Drag` to add intermediate points (polyline), and press `ESC` when done to deselect.
+  </Step>
+  
+  <Step title="Comparison">
+    Hold `Space` and use `Left/Right Arrows` to rapidly scan through historical patterns for comparison.
+  </Step>
+</Steps>
+
+### Speed Modifiers
+
+<Info>
+**Normal Speed** (Default):
+- Arrow keys: 1 bar
+- Mouse wheel: 1 bar
+- Reference cursor: 1 bar
+
+**Fast Speed** (Space held):
+- Arrow keys: Math.floor(nBars × 0.168) bars
+- Mouse wheel: Math.floor(nBars × 0.168) bars
+- Reference cursor: 1 bar (not affected)
+
+*Example*: If 100 bars are visible, fast speed moves 16 bars per increment.
+</Info>
+
+### Zoom Levels (Bar Width)
+
+<CodeGroup>
+```plaintext Predefined Widths
+Level  Width (px)  Use Case
+─────  ──────────  ────────────────────────────────
+  0    0.00025     Ultra-compressed, years of data
+  1    0.0005      Very compressed
+  2    0.001       Compressed
+  3    0.025       Moderate compression
+  4    0.05        Slight compression
+  5    0.1         Compact
+  6    0.25        Normal (wide view)
+  7    0.5         Normal
+  8    1.0         Normal (narrow view)
+  9    2.0         Comfortable
+ 10    4.0         Spacious
+ 11    6.0         Default
+ 12    8.0         Large
+ 13   10.0         Extra large
+ 14   20.0         Maximum detail
+```
+</CodeGroup>
+
+<Tip>
+Use `Up/Down Arrow` to cycle through these zoom levels. The chart remembers your preferred zoom level for each timeframe.
+</Tip>
+
+## Context-Aware Controls
+
+Many controls have different behaviors depending on context:
+
+### ESC Key Behavior
+
+<CodeGroup>
+```plaintext Priority Order
+1. If drawing is selected     → Unselect drawing
+2. If reference cursor active → Remove reference cursor
+3. If crosshair visible       → Hide crosshair
+```
+</CodeGroup>
+
+### Mouse Drag Behavior
+
+<CodeGroup>
+```plaintext Context-Dependent
+Normal Drag           → Move chart horizontally
+Ctrl + Drag          → Scale chart
+Drag on Drawing      → Move drawing
+Ctrl + Drag (Segment) → Insert handle (polyline only)
+```
+</CodeGroup>
+
+## Tips & Tricks
+
+<AccordionGroup>
+  <Accordion title="Fast Time Travel" icon="forward-fast">
+    Hold `Space` + `Right Arrow` repeatedly to quickly jump forward through time. Release `Space` for fine adjustments.
+  </Accordion>
+  
+  <Accordion title="Precision Placement" icon="bullseye">
+    Zoom in (`Up Arrow`) before placing drawing handles for pixel-perfect alignment with price levels.
+  </Accordion>
+  
+  <Accordion title="Reference Cursor Navigation" icon="location-dot">
+    Place a reference cursor at a key support/resistance level, then navigate with `Ctrl + Arrows` to see how price reacted at that level across time.
+  </Accordion>
+  
+  <Accordion title="Drawing Cleanup" icon="broom">
+    After completing a drawing, press `ESC` to deselect it immediately. This keeps your chart clean and prevents accidental modifications.
+  </Accordion>
+  
+  <Accordion title="Multi-Timeframe Analysis" icon="chart-column">
+    Click timeframe → analyze → click another timeframe. Your zoom level and position reset for each timeframe automatically.
+  </Accordion>
+</AccordionGroup>
+
+## Accessibility
+
+VibeTrader supports keyboard-only navigation:
+
+- **All chart navigation** can be performed without a mouse using arrow keys
+- **Reference cursor** can be placed and moved with keyboard only (via code integration)
+- **Drawings** require mouse for initial placement, but can be selected and deleted with keyboard
+
+<Note>
+For users who prefer keyboard-only workflows, consider using the reference cursor as your primary navigation tool.
+</Note>
+
+## Customization
+
+While the shortcuts are currently hardcoded, the architecture supports customization:
+
+```typescript
+// Current implementation in ChartXControl.ts
+REF_PADDING_RIGHT = 1  // Bars of padding when cursor near edge
+REF_PADDING_LEFT = 1
+
+// Fast movement percentage
+isCursorAccelerated ? Math.floor(this.nBars * 0.168) : 1
+```
+
+<Tip>
+Developers can modify these constants to adjust navigation behavior and padding preferences.
+</Tip>

@@ -1,0 +1,279 @@
+---
+title: 'Chart View Components'
+description: 'API reference for ChartView, KlineView, IndicatorView, and VolumeView components'
+---
+
+## ChartView
+
+Base abstract class for all chart view components. Provides common functionality for rendering charts, handling drawing tools, cursors, and user interactions.
+
+### ViewProps
+
+Interface for chart view component properties.
+
+<ParamField path="name" type="string" required>
+  Name identifier for the view
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  Unique identifier for the view instance
+</ParamField>
+
+<ParamField path="x" type="number" required>
+  X-coordinate position of the view
+</ParamField>
+
+<ParamField path="y" type="number" required>
+  Y-coordinate position of the view
+</ParamField>
+
+<ParamField path="width" type="number" required>
+  Width of the view in pixels
+</ParamField>
+
+<ParamField path="height" type="number" required>
+  Height of the view in pixels
+</ParamField>
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for managing horizontal chart coordinates and time
+</ParamField>
+
+<ParamField path="tvar" type="TVar<unknown>" required>
+  Time series variable containing the chart data
+</ParamField>
+
+<ParamField path="updateEvent" type="UpdateEvent" required>
+  Event object for triggering view updates
+</ParamField>
+
+<ParamField path="updateDrawing" type="UpdateDrawing">
+  Drawing update configuration for managing drawing tools
+</ParamField>
+
+<ParamField path="mainIndicatorOutputs" type="Output[]">
+  Main indicator outputs for indicator chart views
+</ParamField>
+
+<ParamField path="indexOfStackedIndicator" type="number">
+  Index of the indicator in stacked layout
+</ParamField>
+
+<ParamField path="overlayIndicators" type="Indicator[]">
+  Array of indicators to overlay on the chart
+</ParamField>
+
+### Constants
+
+<ResponseField name="AXISY_WIDTH" type="number">
+  Width of the Y-axis area (55 pixels)
+</ResponseField>
+
+<ResponseField name="CONTROL_HEIGHT" type="number">
+  Height of control elements (12 pixels)
+</ResponseField>
+
+<ResponseField name="TITLE_HEIGHT_PER_LINE" type="number">
+  Height per line of title text (14 pixels)
+</ResponseField>
+
+### Methods
+
+<ParamField path="computeGeometry" type="(atleastMinValue?: number) => void">
+  Computes the chart geometry including max/min values and Y-axis scaling. Called before rendering to ensure proper coordinate mapping.
+</ParamField>
+
+<ParamField path="wChart" type="() => number">
+  Returns the chart width (total width minus axis width)
+</ParamField>
+
+<ParamField path="valueAtTime" type="(time: number) => number">
+  Abstract method to get the value at a specific time. Must be implemented by subclasses.
+</ParamField>
+
+<ParamField path="plot" type="() => Pick<ViewState, 'chartLines' | 'chartAxisy' | 'gridLines' | 'overlayChartLines' | 'drawingLines'>">
+  Abstract method to plot the chart. Returns JSX elements for rendering.
+</ParamField>
+
+---
+
+## KlineView
+
+Chart view component for displaying candlestick/kline data with support for overlays and drawings.
+
+### Example Usage
+
+```tsx
+import { KlineView } from './lib/charting/view/KlineView';
+import { TVar } from './lib/timeseris/TVar';
+import { Kline } from './lib/domain/Kline';
+
+<KlineView
+  name="Main Chart"
+  id="kline"
+  x={0}
+  y={0}
+  width={800}
+  height={400}
+  xc={chartXControl}
+  tvar={klineVar}
+  updateEvent={updateEvent}
+  overlayIndicators={indicators}
+/>
+```
+
+### Props
+
+Inherits all props from `ViewProps`. The `tvar` prop should be of type `TVar<Kline>`.
+
+### Methods
+
+<ParamField path="plot" type="() => { chartLines, chartAxisy, gridLines, overlayChartLines, drawingLines }">
+  Renders the kline chart with PlotKline component and any overlay indicators.
+</ParamField>
+
+<ParamField path="computeMaxValueMinValue" type="() => [number, number]">
+  Computes the maximum high and minimum low values across all visible klines.
+  
+  Returns: `[maxValue, minValue]`
+</ParamField>
+
+<ParamField path="valueAtTime" type="(time: number) => number">
+  Returns the close price of the kline at the specified time.
+  
+  Source: `KlineView.tsx:229`
+</ParamField>
+
+<ParamField path="swithScalarType" type="() => void">
+  Switches between LINEAR, LG (logarithmic), and LN (natural log) Y-axis scaling.
+</ParamField>
+
+### Overlay Support
+
+KlineView supports multiple overlay plot types:
+
+- `style_line` / `line` - Line plots (PlotLine)
+- `style_linebr` / `style_stepline` - Step line plots (PlotStepLine)
+- `style_circles` / `style_cross` - Circle/cross markers (PlotCrossCircles)
+- `shape` / `char` - Shape markers (PlotShape)
+- `hline` - Horizontal lines (PlotHline)
+- `fill` - Fill between plots (PlotFill)
+- `background` - Background color (PlotBgcolor)
+- `drawing_line` - Drawing lines (PlotDrawingLine)
+
+Source: `KlineView.tsx:67-188`
+
+---
+
+## IndicatorView
+
+Chart view component for displaying technical indicators in a separate pane.
+
+### Example Usage
+
+```tsx
+import { IndicatorView } from './lib/charting/view/IndicatorView';
+
+<IndicatorView
+  name="RSI"
+  id="indicator-0"
+  x={0}
+  y={450}
+  width={800}
+  height={150}
+  xc={chartXControl}
+  tvar={indicatorVar}
+  updateEvent={updateEvent}
+  mainIndicatorOutputs={outputs}
+  indexOfStackedIndicator={0}
+/>
+```
+
+### Props
+
+Inherits all props from `ViewProps`. The `tvar` prop should be of type `TVar<PineData[]>` and `mainIndicatorOutputs` is required.
+
+### Methods
+
+<ParamField path="plot" type="() => { chartLines, chartAxisy, gridLines }">
+  Renders the indicator based on the plot style specified in `mainIndicatorOutputs`.
+</ParamField>
+
+<ParamField path="computeMaxValueMinValue" type="() => [number, number]">
+  Computes the maximum and minimum values from all indicator outputs across visible bars.
+  
+  Returns: `[maxValue, minValue]`
+</ParamField>
+
+<ParamField path="valueAtTime" type="(time: number) => number">
+  Returns `undefined` - indicator views don't show cursor values for time.
+  
+  Source: `IndicatorView.tsx:203`
+</ParamField>
+
+### Supported Plot Styles
+
+- `style_histogram` / `style_columns` - Histogram/column plots (PlotHistogram)
+- `style_circles` / `style_cross` - Circle/cross markers (PlotCrossCircles)
+- `shape` / `char` - Shape markers (PlotShape)
+- `hline` - Horizontal lines (PlotHline)
+- `fill` - Fill between plots (PlotFill)
+- `background` - Background color (PlotBgcolor)
+- `drawing_line` - Drawing lines (PlotDrawingLine)
+- `line` / `dashed` - Line plots (PlotLine)
+
+Source: `IndicatorView.tsx:38-142`
+
+---
+
+## VolumeView
+
+Chart view component for displaying trading volume as a histogram.
+
+### Example Usage
+
+```tsx
+import { VolumeView } from './lib/charting/view/VolumeView';
+
+<VolumeView
+  name="Volume"
+  id="volume"
+  x={0}
+  y={410}
+  width={800}
+  height={100}
+  xc={chartXControl}
+  tvar={klineVar}
+  updateEvent={updateEvent}
+/>
+```
+
+### Props
+
+Inherits all props from `ViewProps`. The `tvar` prop should be of type `TVar<Kline>`.
+
+### Methods
+
+<ParamField path="plot" type="() => { chartLines, chartAxisy, gridLines }">
+  Renders the volume histogram using PlotVolume component.
+</ParamField>
+
+<ParamField path="computeMaxValueMinValue" type="() => [number, number]">
+  Computes the maximum volume across visible bars. Minimum is always 0.
+  
+  Returns: `[maxVolume, 0]`
+  
+  Source: `VolumeView.tsx:49-74`
+</ParamField>
+
+<ParamField path="valueAtTime" type="(time: number) => number">
+  Returns the volume of the kline at the specified time.
+  
+  Source: `VolumeView.tsx:88`
+</ParamField>
+
+### Notes
+
+- Volume view always uses a minimum value of 0
+- Shares the same kline data as KlineView but displays volume property
+- Supports LINEAR and LG (logarithmic) Y-axis scaling

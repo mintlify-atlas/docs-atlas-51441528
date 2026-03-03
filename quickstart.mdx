@@ -1,80 +1,545 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get VibeTrader running in under 5 minutes and start exploring the platform
 ---
 
-## Get started in three steps
-
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will get you from installation to a running VibeTrader instance in just a few minutes.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Make sure you've completed the [Installation](/installation) steps before continuing.
 </Note>
+
+## Starting the Development Server
+
+<Steps>
+  <Step title="Navigate to the project directory">
+    Open your terminal and navigate to the VibeTrader directory:
+    
+    ```bash
+    cd vibetrader
+    ```
+  </Step>
+  
+  <Step title="Start the dev server">
+    Run the Vite development server:
+    
+    ```bash
+    npm run dev
+    ```
+    
+    You should see output similar to:
+    
+    ```bash
+    VITE v7.2.2  ready in 423 ms
+    
+    ➜  Local:   http://localhost:5173/vibetrader/
+    ➜  Network: use --host to expose
+    ➜  press h + enter to show help
+    ```
+  </Step>
+  
+  <Step title="Open in browser">
+    Open your browser and navigate to:
+    
+    ```
+    http://localhost:5173/vibetrader/
+    ```
+    
+    You should see the VibeTrader interface load with a default chart!
+  </Step>
+</Steps>
+
+<Tip>
+  The development server includes Hot Module Replacement (HMR), so changes to your code will be reflected instantly without a full page reload.
+</Tip>
+
+## Your First Chart
+
+When VibeTrader loads, you'll see:
+
+1. **Main Chart Area** - Candlestick chart with OHLCV data
+2. **Volume Panel** - Trading volume histogram below the main chart
+3. **Control Bar** - Symbol selector, timeframe selector, and drawing tools
+4. **Axes** - X-axis (time) and Y-axis (price)
+
+### Selecting a Symbol
+
+<Steps>
+  <Step title="Click the symbol selector">
+    Click on the current symbol (e.g., "BTCUSDT") in the top toolbar
+  </Step>
+  
+  <Step title="Search for a symbol">
+    Type a symbol name to search:
+    - For crypto: `ETHUSDT`, `BNBUSDT`, `SOLUSDT`
+    - For stocks: `AAPL`, `GOOGL`, `MSFT` (if using Yahoo Finance)
+  </Step>
+  
+  <Step title="Select from results">
+    Click on a symbol from the search results to load its data
+  </Step>
+</Steps>
+
+### Changing Timeframes
+
+<Steps>
+  <Step title="Click the timeframe selector">
+    Click on the current timeframe (e.g., "1h") in the toolbar
+  </Step>
+  
+  <Step title="Choose a timeframe">
+    Select from available options:
+    - **1m** - 1 minute (for scalping)
+    - **5m** - 5 minutes
+    - **15m** - 15 minutes
+    - **1h** - 1 hour (default)
+    - **4h** - 4 hours
+    - **1d** - Daily
+    - **1w** - Weekly
+  </Step>
+</Steps>
+
+<Info>
+  The platform will automatically fetch historical data for the selected symbol and timeframe.
+</Info>
+
+## Basic Navigation
+
+### Mouse Controls
+
+Master these essential mouse controls:
+
+<CodeGroup>
+```text Mouse Controls
+┌─────────────────────────────────────────┐
+│ Drag                  → Move chart      │
+│ Ctrl + Drag           → Scale Y-axis    │
+│ Mouse Wheel           → Move chart      │
+│ Shift + Wheel         → Zoom in/out     │
+│ Double click (chart)  → Reference cursor│
+│ Double click (Y-axis) → Remove cursor   │
+└─────────────────────────────────────────┘
+```
+</CodeGroup>
+
+#### Moving the Chart
+
+```typescript
+// Implementation in src/lib/charting/view/ChartView.tsx
+onMouseMove(e) {
+  if (isDragging) {
+    // Move chart horizontally
+    xc.moveChart(deltaMouse.dx);
+  }
+}
+```
+
+#### Zooming
+
+```typescript
+// Zoom with Shift + Mouse Wheel
+onWheel(e) {
+  if (e.shiftKey) {
+    // Zoom in/out
+    xc.zoom(e.deltaY);
+  } else {
+    // Move chart
+    xc.move(e.deltaY);
+  }
+}
+```
+
+### Keyboard Shortcuts
+
+Speed up your workflow with keyboard shortcuts:
+
+<CodeGroup>
+```text Navigation
+← →        Move chart left/right
+↑ ↓        Zoom in/out
+Ctrl + ←→  Move reference cursor
+Space      Toggle fast/normal speed
+ESC        Hide crosshair/cursor
+```
+
+```text Drawing Tools
+Click      Select drawing
+Ctrl+Click Complete variable drawing
+DELETE     Delete selected drawing
+ESC        Unselect drawing
+```
+</CodeGroup>
+
+<Tip>
+  Press **Space** to toggle between fast and normal movement speed for quicker chart navigation.
+</Tip>
+
+## Drawing Tools
+
+VibeTrader includes powerful technical analysis drawing tools.
+
+### Drawing a Trendline
+
+<Steps>
+  <Step title="Select the Line tool">
+    Click the Line icon in the drawing toolbar
+  </Step>
+  
+  <Step title="Click the starting point">
+    Click on the chart where you want the line to start
+  </Step>
+  
+  <Step title="Click the ending point">
+    Click where you want the line to end
+    
+    The trendline is now complete!
+  </Step>
+</Steps>
+
+### Drawing Fibonacci Retracement
+
+<Steps>
+  <Step title="Select Fibonacci tool">
+    Click the Fibonacci Retracement icon
+  </Step>
+  
+  <Step title="Click the swing low">
+    Click at the bottom of a price movement
+  </Step>
+  
+  <Step title="Click the swing high">
+    Click at the top of the price movement
+    
+    Fibonacci levels (0%, 23.6%, 38.2%, 50%, 61.8%, 100%) will be displayed
+  </Step>
+</Steps>
+
+<Info>
+  All drawing tools support handles for adjustment after creation. Click and drag handles to modify drawings.
+</Info>
+
+### Available Drawing Tools
+
+| Tool | Description | Use Case |
+|------|-------------|----------|
+| **Line** | Simple trendline | Support/resistance levels |
+| **Fibonacci Retracement** | Horizontal levels | Potential reversal zones |
+| **Fibonacci Time Zone** | Vertical time-based levels | Time-based analysis |
+| **Gann Angles** | Geometric price/time angles | Price and time correlation |
+| **Parallel Channel** | Two parallel trendlines | Channel trading |
+| **Polyline** | Multi-segment line | Complex patterns |
+
+See `src/lib/charting/drawing/` for implementation details.
+
+## Adding Indicators
+
+VibeTrader supports custom indicators via PineScript integration.
+
+### Adding a Built-in Indicator
+
+<Steps>
+  <Step title="Open indicator menu">
+    Click the indicator button in the toolbar
+  </Step>
+  
+  <Step title="Select an indicator">
+    Choose from available indicators (SMA, EMA, RSI, MACD, etc.)
+  </Step>
+  
+  <Step title="Configure parameters">
+    Adjust indicator parameters like period, color, and line style
+  </Step>
+</Steps>
+
+### Using PineScript
+
+Create custom indicators with PineScript:
+
+```typescript
+import { PineTS } from 'pinets';
+
+// Example: Simple Moving Average
+const scriptCode = `
+//@version=5
+indicator("My SMA", overlay=true)
+length = input.int(20, "Length")
+sma_value = ta.sma(close, length)
+plot(sma_value, color=color.blue, linewidth=2)
+`;
+
+// Compile and execute
+const indicator = await PineTS.compile(scriptCode);
+const outputs = await indicator.execute({
+  open: openArray,
+  high: highArray,
+  low: lowArray,
+  close: closeArray,
+  volume: volumeArray
+});
+```
+
+<Tip>
+  PineScript indicators can be overlaid on the main chart or displayed in separate panes.
+</Tip>
+
+## Data Sources
+
+VibeTrader can fetch data from multiple sources.
+
+### Configuring Data Source
+
+In `src/Env.ts`, set your preferred data source:
+
+```typescript
+import { Source } from './lib/domain/DataFecther';
+
+export const source = Source.binance;  // or Source.yfinance
+```
+
+### Binance (Crypto)
+
+Default source for cryptocurrency data:
+
+```typescript
+import { fetchData, Source } from './lib/domain/DataFecther';
+
+await fetchData(
+  Source.binance,
+  baseSer,
+  'BTCUSDT',
+  tframe,
+  'UTC'
+);
+```
+
+<Note>
+  Binance integration uses the [pinets Provider.Binance](https://www.npmjs.com/package/pinets) for market data.
+</Note>
+
+### Yahoo Finance (Stocks)
+
+For stock market data:
+
+```typescript
+await fetchData(
+  Source.yfinance,
+  baseSer,
+  'AAPL',
+  tframe,
+  'America/New_York'
+);
+```
+
+### Local Data
+
+Load custom data from JSON:
+
+```json
+// klines.json
+[
+  {
+    "Date": "2024-01-01T00:00:00Z",
+    "Open": 42000,
+    "High": 42500,
+    "Low": 41800,
+    "Close": 42300,
+    "Volume": 1234.56
+  }
+]
+```
+
+Place in `public/klines.json` and the platform will load it automatically if remote sources fail.
+
+## Taking Screenshots
+
+Capture your analysis for sharing:
+
+<Steps>
+  <Step title="Position your chart">
+    Navigate to the view you want to capture
+  </Step>
+  
+  <Step title="Click screenshot button">
+    Click the camera/screenshot icon in the toolbar
+  </Step>
+  
+  <Step title="Save the image">
+    The screenshot will be downloaded as a PNG file
+  </Step>
+</Steps>
+
+Screenshots are powered by [html2canvas](https://html2canvas.hertzen.com/) and capture the entire chart area including drawings and indicators.
+
+```typescript
+// Implementation in src/lib/charting/pane/Screenshot.tsx
+import html2canvas from 'html2canvas';
+
+const captureScreenshot = async () => {
+  const canvas = await html2canvas(chartElement);
+  const dataUrl = canvas.toDataURL('image/png');
+  downloadImage(dataUrl, 'vibetrader-chart.png');
+};
+```
+
+## Building for Production
+
+When you're ready to deploy:
+
+<Steps>
+  <Step title="Build the application">
+    ```bash
+    npm run build
+    ```
+    
+    This creates an optimized production build in the `dist/` directory
+  </Step>
+  
+  <Step title="Preview the build">
+    ```bash
+    npm run preview
+    ```
+    
+    Test the production build locally at `http://localhost:4173/vibetrader/`
+  </Step>
+  
+  <Step title="Deploy">
+    Deploy the `dist/` directory to your hosting service:
+    - GitHub Pages
+    - Netlify
+    - Vercel
+    - Any static hosting
+  </Step>
+</Steps>
+
+<Warning>
+  Remember to update the `base` path in `vite.config.ts` if deploying to a different path than `/vibetrader/`.
+</Warning>
+
+## Common Tasks
+
+### Customizing Colors
+
+Colors are defined in `src/lib/Colors.ts`:
+
+```typescript
+export const Colors = {
+  positive: '#26a69a',  // Green for bullish candles
+  negative: '#ef5350',  // Red for bearish candles
+  grid: '#e0e0e0',      // Grid lines
+  // ... more colors
+};
+```
+
+### Adjusting Chart Appearance
+
+Modify chart dimensions in component props:
+
+```tsx
+<ChartView
+  name="Main Chart"
+  width={1200}
+  height={600}
+  xc={xControl}
+  tvar={klineVar}
+  updateEvent={updateEvent}
+/>
+```
+
+### Changing Default Timeframe
+
+Set in `src/lib/charting/view/KlineViewContainer.tsx`:
+
+```typescript
+const tframe = TFrame.fromShortName('1h');  // Default to 1 hour
+```
+
+## Next Steps
+
+Now that you're up and running, explore more advanced features:
+
+<CardGroup cols={2}>
+  <Card
+    title="Chart Controls"
+    icon="sliders"
+    href="/user-guide/chart-controls"
+  >
+    Master advanced chart manipulation and controls
+  </Card>
+  <Card
+    title="Drawing Tools"
+    icon="pen"
+    href="/user-guide/drawing-tools"
+  >
+    Learn all drawing tools and techniques
+  </Card>
+  <Card
+    title="Architecture"
+    icon="sitemap"
+    href="/dev-guide/architecture"
+  >
+    Understand the platform's architecture
+  </Card>
+  <Card
+    title="Custom Indicators"
+    icon="chart-line"
+    href="/dev-guide/custom-indicators"
+  >
+    Build your own technical indicators
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Chart Not Loading
+
+**Issue**: Blank screen or chart doesn't appear
+
+**Solution**:
+1. Check browser console for errors (F12)
+2. Verify data source is accessible
+3. Try a different symbol or timeframe
+
+### Data Fetch Errors
+
+**Issue**: "Failed to fetch data" error
+
+**Solution**:
+```typescript
+// Check network connectivity
+// Verify API endpoints are accessible
+// Try switching data sources in src/Env.ts
+export const source = Source.yfinance;  // Try alternative source
+```
+
+### Drawing Tools Not Working
+
+**Issue**: Can't create drawings
+
+**Solution**:
+1. Ensure a drawing tool is selected from the toolbar
+2. Click completely (don't drag) to place points
+3. For variable-handle drawings, Ctrl+Click to complete
+
+<Info>
+  For more help, check the [User Guide](/user-guide/chart-controls) or visit the [GitHub repository](https://github.com/dcaoyuan/vibetrader) to report issues.
+</Info>
+
+## Summary
+
+You've learned how to:
+
+- ✅ Start the development server
+- ✅ Navigate charts with mouse and keyboard
+- ✅ Select symbols and timeframes
+- ✅ Use drawing tools for technical analysis
+- ✅ Add indicators with PineScript
+- ✅ Capture screenshots
+- ✅ Build for production
+
+<Card
+  title="Continue Learning"
+  icon="graduation-cap"
+  href="/user-guide/chart-controls"
+>
+  Dive deeper into VibeTrader's features in the User Guide
+</Card>

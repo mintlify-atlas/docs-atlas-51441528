@@ -1,0 +1,345 @@
+---
+title: Custom Indicators
+description: Create custom technical indicators using PineScript
+---
+
+## Overview
+
+VibeTrader supports custom indicators written in PineScript v6. Indicators can be overlaid on the price chart or displayed in separate panels.
+
+## Indicator Structure
+
+### Basic Template
+
+```pinescript
+//@version=6
+indicator("My Custom Indicator", overlay = false)
+
+// 1. Define inputs
+length = input.int(14, "Period", minval=1)
+
+// 2. Calculate values
+value = ta.sma(close, length)
+
+// 3. Plot results
+plot(value, color=color.blue, title="SMA")
+```
+
+### Overlay Indicators
+
+Set `overlay = true` to display on the price chart:
+
+```pinescript ema.pine
+//@version=6
+indicator("EMA", overlay = true)
+
+// Inputs
+input9 = input.int(9, "Fast MA")
+input21 = input.int(21, "Slow MA")
+input36 = input.int(36, "Slowest MA")
+
+// Calculations
+ma9 = ta.ema(close, input9)
+ma21 = ta.ema(close, input21)
+ma36 = ta.ema(close, input36)
+
+// Plotting
+plot(ma9, color = #FF6D00, title="EMA-9")
+plot(ma21, color = #2962FF, title="EMA-21")
+plot(ma36, color = #aec7e8, title="EMA-36")
+```
+
+### Stacked Indicators
+
+Set `overlay = false` for separate panels:
+
+```pinescript rsi.pine
+//@version=6
+indicator("Simple RSI", overlay = false)
+
+// Get User Input
+rsiLength = input.int(13, "RSI Length", minval = 1)
+rsiSource = input.source(close, "Source")
+
+// Calculate RSI
+rsiValue = ta.rsi(rsiSource, rsiLength)
+
+// Plot
+plot(rsiValue, "RSI", color = #FF6D00, linewidth = 2)
+
+// Horizontal lines for Overbought/Oversold levels
+h0 = hline(70, "Upper Band", color = color.gray, linestyle = hline.style_dashed)
+h1 = hline(30, "Lower Band", color = color.gray, linestyle = hline.style_dashed)
+fill(h0, h1, color = color.rgb(126, 87, 194, 90), title = "Background")
+```
+
+## Plot Types
+
+VibeTrader supports all PineScript plot styles. The `Plot` type is defined in `src/lib/charting/plot/Plot.ts:1`:
+
+```typescript src/lib/charting/plot/Plot.ts
+export type Plot = {
+    data: PineData[],
+    options: PlotOptions,
+    title: string,
+    _plotKey: string,
+}
+
+export type PlotOptions = {
+    color?: string;
+    linewidth?: number;
+    linestyle?: string;
+    style?: string;  // 'line' | 'stepline' | 'histogram' | 'columns' | 'area' | 'shape' | 'char'
+    location?: Location;  // 'abovebar' | 'belowbar' | 'top' | 'bottom' | 'absolute'
+    force_overlay?: boolean;
+    // ... additional options
+};
+```
+
+### Line Plots
+
+```pinescript
+plot(ma, color=color.blue, linewidth=2, title="Moving Average")
+```
+
+### Histogram
+
+```pinescript macd.pine
+//@version=6
+indicator("MACD", overlay=false)
+
+// MACD Inputs
+fast_length = 12
+slow_length = 26
+signal_length = 9
+
+// Calculation
+[macdLine, signalLine, histLine] = ta.macd(close, fast_length, slow_length, signal_length)
+
+// Plotting
+plot(macdLine, color=color.blue, title="MACD Line")
+plot(signalLine, color=color.orange, title="Signal Line")
+
+// Histogram with color based on value
+histColor = histLine >= 0 ? (histLine > histLine[1] ? #26A69A : #B2DFDB) : (histLine < histLine[1] ? #EF5350 : #FFCDD2)
+plot(histLine, color=histColor, style=plot.style_columns, title="Histogram")
+hline(0, "Zero Line", color=color.gray)
+```
+
+### Shapes and Characters
+
+```pinescript
+plotshape(crossover(fast, slow), style=shape.triangleup, location=location.belowbar, color=color.green)
+plotchar(crossunder(fast, slow), char="▼", location=location.abovebar, color=color.red)
+```
+
+## Advanced Features
+
+### Fill Between Plots
+
+```pinescript bb.pine
+//@version=6
+indicator("Bollinger Bands Example", overlay=true)
+
+// Define inputs for the Bollinger Bands
+length = input.int(20, minval=1)
+mult = input.float(2.0, minval=0.001, maxval=50)
+
+// Calculate the Bollinger Bands using ta.bb()
+[middleBand, upperBand, lowerBand] = ta.bb(close, length, mult)
+
+// Plot the bands on the chart
+plot(middleBand, color=color.blue, title="Middle Band")
+p1 = plot(upperBand, color=color.red, title="Upper Band")
+p2 = plot(lowerBand, color=color.red, title="Lower Band")
+
+// Fill the area between bands
+fill(p1, p2, color=color.rgb(33, 150, 243, 90), title="Background")
+```
+
+### Dynamic Line Objects
+
+PineScript can create dynamic line objects that VibeTrader renders:
+
+```pinescript lines.pine
+//@version=6
+indicator("Reading line values demo", overlay = true)
+
+int length = input.int(2, "Length", 2)
+var line directionLine = na
+
+bool rising = ta.rising(hlc3, length)
+bool falling = ta.falling(hlc3, length)
+bool newDirection = (rising and not rising[1]) or (falling and not falling[1])
+
+// Update the line when direction changes
+if newDirection
+    directionLine := line.new(bar_index - length, hlc3[length], bar_index, hlc3, width = 3)
+
+float slope = (directionLine.get_y2() - directionLine.get_y1()) / (directionLine.get_x2() - directionLine.get_x1())
+float lineValue = line.get_price(directionLine, bar_index)
+
+color slopeColor = slope > 0 ? color.green : color.red
+
+directionLine.set_color(slopeColor)
+plot(lineValue, "Extrapolated value", slopeColor, 3, plot.style_circles)
+```
+
+<Note>
+Line objects are represented by the `LineObject` type in `PineData.ts:3`.
+</Note>
+
+## Plot Categorization
+
+VibeTrader automatically categorizes plots as overlay or stacked based on these rules:
+
+```typescript KlineViewContainer.tsx:331
+const isOverlayOutputShapeAndLocation = (
+    (style === 'shape' || style === 'char') && 
+    (location === 'abovebar' || location === 'belowbar')
+)
+
+if (isOverlayOutputShapeAndLocation || isForceOverlay) {
+    overlayOutputs.push(output)
+} else {
+    if (notForceOverlay) {
+        stackedOutputs.push(output)
+    } else {
+        if (isOverlayIndicator) {
+            overlayOutputs.push(output)
+        } else {
+            stackedOutputs.push(output)
+        }
+    }
+}
+```
+
+### Force Overlay
+
+Use `force_overlay` option to control placement:
+
+```pinescript
+plot(myValue, title="My Plot", force_overlay=true)  // Force onto main chart
+```
+
+## Loading Indicators
+
+### Predefined Indicators
+
+Place PineScript files in `public/indicators/`:
+
+```
+public/indicators/
+├── ema.pine
+├── rsi.pine
+├── macd.pine
+├── bb.pine
+└── custom.pine
+```
+
+They will be auto-loaded at startup:
+
+```typescript KlineViewContainer.tsx:407
+this.fetchOPredefinedScripts(allIndTags).then(scripts => {
+    this.predefinedScripts = new Map(scripts.map(p => [p.scriptName, p.script]))
+})
+```
+
+### Runtime Execution
+
+Execute scripts dynamically:
+
+```typescript
+// From KlineViewContainer component
+const scripts = [
+    '//@version=6\nindicator("Custom")\nplot(close)'
+];
+
+klineViewContainer.runScripts(scripts);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Performance">
+    - Minimize complex calculations in loops
+    - Use built-in `ta.*` functions when possible
+    - Avoid excessive plot calls
+    - Cache input values
+  </Accordion>
+
+  <Accordion title="Visual Design">
+    - Choose distinct colors for multiple plots
+    - Use appropriate line widths (1-3 pixels)
+    - Add meaningful titles to all plots
+    - Use hlines for reference levels
+  </Accordion>
+
+  <Accordion title="User Experience">
+    - Provide sensible default input values
+    - Add min/max constraints to inputs
+    - Use descriptive input names
+    - Document calculation methodology in comments
+  </Accordion>
+
+  <Accordion title="Debugging">
+    Plot data is logged to console:
+    ```typescript
+    console.log(scriptName + ' data\n', data)
+    console.log(scriptName + ' options\n', plots.map(x => JSON.stringify(x.options)))
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Multi-Timeframe Analysis
+
+```pinescript
+//@version=6
+indicator("MTF EMA", overlay=true)
+
+timeframe = input.timeframe("D", "Timeframe")
+length = input.int(20, "Length")
+
+higherEma = request.security(syminfo.tickerid, timeframe, ta.ema(close, length))
+plot(higherEma, color=color.purple, linewidth=2)
+```
+
+### Conditional Coloring
+
+```pinescript
+//@version=6
+indicator("Dynamic Color")
+
+value = ta.rsi(close, 14)
+valueColor = value > 70 ? color.red : value < 30 ? color.green : color.gray
+plot(value, color=valueColor, linewidth=2)
+```
+
+### Multiple Outputs
+
+```pinescript
+//@version=6
+indicator("Trend System", overlay=true)
+
+fast = ta.ema(close, 12)
+slow = ta.ema(close, 26)
+
+plot(fast, color=color.blue, title="Fast EMA")
+plot(slow, color=color.red, title="Slow EMA")
+
+bgColor = fast > slow ? color.new(color.green, 90) : color.new(color.red, 90)
+bgcolor(bgColor)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="PineScript Integration" icon="code" href="/dev-guide/pinescript-integration">
+    Learn how PineTS integrates with VibeTrader
+  </Card>
+  <Card title="Custom Drawings" icon="pen" href="/dev-guide/custom-drawings">
+    Create custom drawing tools for chart analysis
+  </Card>
+</CardGroup>

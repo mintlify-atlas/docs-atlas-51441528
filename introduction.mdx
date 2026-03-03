@@ -1,0 +1,228 @@
+---
+title: Introduction to VibeTrader
+description: Open source AI-friendly trading platform with advanced charting, technical analysis, and PineScript integration
+---
+
+VibeTrader is a powerful open-source trading platform built with React, designed to provide professional-grade charting and technical analysis capabilities with an AI-friendly architecture.
+
+<CardGroup cols={2}>
+  <Card
+    title="Installation"
+    icon="download"
+    href="/installation"
+  >
+    Get VibeTrader running on your local machine in minutes
+  </Card>
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Learn the basics and start trading in under 5 minutes
+  </Card>
+  <Card
+    title="User Guide"
+    icon="book"
+    href="/user-guide/chart-controls"
+  >
+    Master chart controls, drawing tools, and keyboard shortcuts
+  </Card>
+  <Card
+    title="Developer Guide"
+    icon="code"
+    href="/dev-guide/architecture"
+  >
+    Explore the architecture and extend VibeTrader
+  </Card>
+</CardGroup>
+
+## What is VibeTrader?
+
+VibeTrader is a modern frontend trading platform that brings together the power of traditional charting tools with cutting-edge technology. Built entirely with React and TypeScript, it provides a robust foundation for technical analysis and trading visualization.
+
+<Note>
+  VibeTrader is designed to be AI-friendly, making it easier to integrate with AI agents and automated trading systems.
+</Note>
+
+## Key Features
+
+### Interactive Candlestick Charting
+
+Real-time candlestick charts with support for multiple timeframes and symbols. Built using the `ChartView` and `KlineView` components, providing smooth rendering and responsive interactions.
+
+### Technical Drawing Tools
+
+Comprehensive set of drawing tools for technical analysis:
+
+<CardGroup cols={2}>
+  <Card title="Fibonacci Retracement" icon="chart-line">
+    Identify potential support and resistance levels
+  </Card>
+  <Card title="Gann Angles" icon="angles-up">
+    Analyze price movements with geometric patterns
+  </Card>
+  <Card title="Trendlines" icon="arrow-trend-up">
+    Draw custom trendlines and parallel channels
+  </Card>
+  <Card title="Polylines" icon="bezier-curve">
+    Create variable-handle drawings for complex analysis
+  </Card>
+</CardGroup>
+
+### Advanced Plot Types
+
+VibeTrader supports multiple visualization types:
+
+- **Line plots** - Simple line charts for clear trend visualization
+- **Histograms** - Volume and indicator displays
+- **Fills** - Area fills between lines for enhanced visual analysis
+- **Shapes** - Custom markers and annotations
+- **Horizontal lines** - Key price levels and markers
+- **Background colors** - Time-based highlighting
+
+### PineScript Integration
+
+Powerful indicator support through [pinets](https://www.npmjs.com/package/pinets) integration:
+
+```tsx
+import { PineTS } from 'pinets';
+
+// Create custom indicators using PineScript syntax
+const indicator = await PineTS.compile(scriptCode);
+const outputs = await indicator.execute(data);
+```
+
+<Tip>
+  The PineScript integration allows you to use thousands of existing indicators from TradingView and create your own custom technical analysis tools.
+</Tip>
+
+### Multi-Source Data Fetching
+
+Connect to multiple data sources:
+
+- **Binance** - Cryptocurrency market data
+- **Yahoo Finance** - Stock and ETF data
+- **Local JSON** - Custom data import
+
+See `src/lib/domain/DataFecther.ts` for implementation details.
+
+### Advanced Time Series Management
+
+Robust time series system with:
+
+- **TSer** - Time series container
+- **TFrame** - Timeframe management (1m, 5m, 1h, 1d, etc.)
+- **TVar** - Time-varying variables
+- **Kline** - OHLCV data structure
+
+```typescript
+import { DefaultTSer } from './lib/timeseris/DefaultTSer';
+import { TFrame } from './lib/timeseris/TFrame';
+import { Kline } from './lib/domain/Kline';
+
+const baseSer = new DefaultTSer();
+const tframe = TFrame.fromShortName('1h');
+const kline = new Kline(time, open, high, low, close, volume);
+baseSer.addToVar('kline', kline);
+```
+
+### Comprehensive Keyboard Shortcuts
+
+Speed up your workflow with intuitive keyboard controls:
+
+| Action | Shortcut |
+|--------|----------|
+| Move chart | Arrow keys |
+| Zoom chart | Up/Down arrows |
+| Fast mode | Space (toggle) |
+| Hide crosshair | ESC |
+| Delete drawing | DELETE |
+
+For the complete list, see the [Keyboard Shortcuts](/user-guide/keyboard-shortcuts) guide.
+
+### Screenshot & Export
+
+Capture your analysis with built-in screenshot capabilities powered by html2canvas:
+
+```tsx
+import html2canvas from 'html2canvas';
+
+// Capture chart as image
+const canvas = await html2canvas(chartElement);
+const image = canvas.toDataURL('image/png');
+```
+
+## Technology Stack
+
+VibeTrader is built with modern web technologies:
+
+- **React 19** - Latest React features with React Aria Components
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool and dev server
+- **React Spectrum** - Adobe's design system for accessible UI
+- **PineTS** - PineScript compiler for JavaScript
+- **Temporal** - Modern date/time handling
+
+## Architecture Highlights
+
+VibeTrader follows a component-based architecture:
+
+- **View Layer** - `ChartView`, `KlineView`, `IndicatorView`, `VolumeView`
+- **Plot Layer** - `PlotLine`, `PlotKline`, `PlotHistogram`, `PlotFill`, etc.
+- **Domain Layer** - `Kline`, `TSerProvider`, data fetchers
+- **Time Series** - `TSer`, `TFrame`, `TVar` for temporal data management
+- **Drawing Tools** - Extensible drawing system with handles and interactions
+
+<Info>
+  For detailed architecture documentation, see the [Architecture Guide](/dev-guide/architecture).
+</Info>
+
+## Use Cases
+
+**Day Trading** - Real-time charting with fast data updates
+
+**Technical Analysis** - Complete drawing tools and indicators
+
+**Research & Backtesting** - Historical data visualization and analysis
+
+**AI Integration** - Clean API surface for automated trading systems
+
+**Custom Indicators** - Build and test your own technical indicators
+
+## Getting Started
+
+Ready to start using VibeTrader? Follow our guides:
+
+<Steps>
+  <Step title="Install">
+    Clone the repository and install dependencies
+    
+    See the [Installation](/installation) guide for detailed steps.
+  </Step>
+  <Step title="Run">
+    Start the development server and explore the interface
+    
+    Follow the [Quick Start](/quickstart) guide to get up and running.
+  </Step>
+  <Step title="Learn">
+    Master the controls and features
+    
+    Check out the [User Guide](/user-guide/chart-controls) for in-depth tutorials.
+  </Step>
+  <Step title="Extend">
+    Build custom indicators and tools
+    
+    Read the [Developer Guide](/dev-guide/architecture) to start customizing.
+  </Step>
+</Steps>
+
+## Community & Support
+
+VibeTrader is open source and welcomes contributions!
+
+- **GitHub** - [github.com/dcaoyuan/vibetrader](https://github.com/dcaoyuan/vibetrader)
+- **Documentation** - [deepwiki.com/dcaoyuan/vibetrader](https://deepwiki.com/dcaoyuan/vibetrader)
+
+<Warning>
+  VibeTrader is for educational and research purposes. Always do your own research before making trading decisions.
+</Warning>

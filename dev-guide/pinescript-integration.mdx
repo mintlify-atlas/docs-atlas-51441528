@@ -1,0 +1,241 @@
+---
+title: PineScript Integration
+description: How VibeTrader integrates PineScript using the PineTS library
+---
+
+## Overview
+
+VibeTrader uses [PineTS](https://github.com/your-org/pinets) to execute PineScript indicators directly in the browser. This enables powerful technical analysis without server-side computation.
+
+## Architecture
+
+### PineTS Provider Pattern
+
+VibeTrader implements a custom data provider that feeds market data to PineTS:
+
+```typescript src/lib/domain/TSerProvider.ts
+export class TSerProvider {
+    data: Kline[];
+
+    constructor(kvar: TVar<Kline>) {
+        this.data = kvar.toArray();
+    }
+
+    async getMarketData(tickerId: string, timeframe: string, limit?: number, sDate?: number, eDate?: number): Promise<unknown> {
+        return this.data;
+    }
+
+    getSymbolInfo(tickerId: string) {
+        return Promise.resolve({
+            ticker: tickerId,
+            tickerid: tickerId,
+            // ... additional symbol metadata
+        });
+    }
+}
+```
+
+### Data Flow
+
+1. **Fetch Market Data** - Load OHLCV data via `DataFetcher.ts:248`
+2. **Create Provider** - Instantiate `TSerProvider` with kline data at `KlineViewContainer.tsx:264`
+3. **Initialize PineTS** - Create PineTS instance with provider at `KlineViewContainer.tsx:266`
+4. **Execute Scripts** - Run PineScript code and get plot results at `KlineViewContainer.tsx:268`
+5. **Store Results** - Convert plot data to internal format at `KlineViewContainer.tsx:287`
+
+## Running PineScript
+
+### Basic Execution
+
+```typescript KlineViewContainer.tsx
+const provider = new TSerProvider(kvar);
+const pineTS = new PineTS(provider, ticker, tframeToPineTimeframe(tframe));
+
+return pineTS.ready().then(() =>
+    pineTS.run(script).then(result => ({ scriptName, result }))
+        .catch(error => {
+            console.error(error);
+            throw error;
+        })
+);
+```
+
+### Processing Results
+
+PineTS returns plots with data and options:
+
+```typescript KlineViewContainer.tsx:284
+const { overlayIndicators, stackedIndicators } =
+    results.reduce(({ overlayIndicators, stackedIndicators }, { scriptName, result }, n) => {
+        if (result) {
+            const tvar = baseSer.varOf(`${scriptName}_${n}`) as TVar<PineData[]>;
+            const plots = Object.values(result.plots) as Plot[];
+            const data = plots.map(({ data }) => data);
+            
+            // Store plot data in time series
+            for (let i = 0; i < size; i++) {
+                const vs = data.map(v => v ? v[i] : undefined);
+                tvar.setByIndex(i, vs);
+            }
+            
+            // Categorize as overlay or stacked indicator
+            const isOverlayIndicator = result.indicator?.overlay;
+            // ... categorization logic
+        }
+        return { overlayIndicators, stackedIndicators };
+    }, init);
+```
+
+## PineScript Data Types
+
+VibeTrader defines TypeScript types for PineScript output:
+
+```typescript src/lib/domain/PineData.ts
+export type PineData = {
+    title?: string,
+    time: number,
+    value: number | boolean | LineObject[],
+    options?: { color: string }
+}
+
+export type LineObject = {
+    id: number;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    xloc: string;
+    extend: string;
+    color: string;
+    style: string;
+    width: number;
+    force_overlay: boolean;
+    _deleted: boolean;
+}
+```
+
+## Timeframe Conversion
+
+PineScript uses different timeframe notation than VibeTrader's internal representation:
+
+```typescript src/lib/domain/PineData.ts:31
+export function tframeToPineTimeframe(tframe: TFrame) {
+    const shortName = tframe.shortName
+    if (shortName.endsWith('D')) {
+        return 'D'
+    } else if (shortName.endsWith('W')) {
+        return 'W'
+    } else if (shortName.endsWith('M')) {
+        return 'M'
+    } else if (shortName.endsWith('h') || shortName.endsWith('H')) {
+        return shortName.slice(0, shortName.length)
+    }
+}
+```
+
+<Note>
+Supported timeframes: `['1', '3', '5', '15', '30', '45', '60', '120', '180', '240', 'D', 'W', 'M']`
+</Note>
+
+## Loading Scripts
+
+### From Files
+
+Predefined scripts are loaded from the `public/indicators/` directory:
+
+```typescript KlineViewContainer.tsx:212
+fetchOPredefinedScripts = (scriptNames: string[]) => {
+    const fetchScript = (scriptName: string) =>
+        fetch("./indicators/" + scriptName + ".pine")
+            .then(r => r.text())
+            .then(script => ({ scriptName, script }))
+
+    return Promise.all(scriptNames.map(scriptName => fetchScript(scriptName)))
+}
+```
+
+### Dynamic Execution
+
+Scripts can be executed dynamically at runtime:
+
+```typescript KlineViewContainer.tsx:963
+analyze(ticker: string, timeframe: string, scripts?: string[], tzone?: string) {
+    this.scripts = scripts?.map((script, i) => ({ 
+        scriptName: `ai_${Math.round(1000)}_${i}`, 
+        script 
+    }));
+    
+    return this.fetchData_runScripts(undefined, 1000);
+}
+```
+
+## Plot Categorization
+
+### Overlay vs Stacked
+
+Plots are categorized based on their properties:
+
+```typescript KlineViewContainer.tsx:308
+const isOverlayIndicator = indicator !== undefined && indicator.overlay
+
+const isOverlayOutputShapeAndLocation = (
+    (style === 'shape' || style === 'char') && 
+    (location === 'abovebar' || location === 'belowbar')
+)
+
+if (isOverlayOutputShapeAndLocation || isForceOverlay) {
+    overlayOutputs.push(output)
+} else if (notForceOverlay) {
+    stackedOutputs.push(output)
+} else {
+    if (isOverlayIndicator) {
+        overlayOutputs.push(output)
+    } else {
+        stackedOutputs.push(output)
+    }
+}
+```
+
+<Tip>
+Use `force_overlay: true` in plot options to force an indicator onto the main chart.
+</Tip>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Error Handling">
+    Always wrap PineTS execution in try-catch blocks:
+    
+    ```typescript
+    pineTS.run(script)
+        .then(result => ({ scriptName, result }))
+        .catch(error => {
+            console.error(error);
+            throw error;
+        })
+    ```
+  </Accordion>
+
+  <Accordion title="Performance">
+    - Cache script execution results when possible
+    - Use `currentLoading` promise chaining to prevent concurrent executions
+    - Limit the number of concurrent indicators to maintain performance
+  </Accordion>
+
+  <Accordion title="Memory Management">
+    - Clear timeout handlers when unmounting components
+    - Reset scripts when changing symbols/timeframes
+    - Use `Promise.all()` for parallel script execution
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Custom Indicators" icon="chart-line" href="/dev-guide/custom-indicators">
+    Learn how to create custom PineScript indicators
+  </Card>
+  <Card title="Plot Types" icon="chart-area" href="/dev-guide/custom-drawings">
+    Understand different plot styles and drawing tools
+  </Card>
+</CardGroup>

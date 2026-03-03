@@ -1,0 +1,451 @@
+---
+title: 'Data Sources'
+description: 'Connect to Binance and Yahoo Finance for real-time and historical market data'
+---
+
+## Overview
+
+VibeTrader supports multiple data sources for fetching market data. Currently, the platform integrates with **Binance** for cryptocurrency data and **Yahoo Finance** for stocks, indices, and other traditional financial instruments.
+
+## Supported Data Sources
+
+<CardGroup cols={2}>
+  <Card title="Yahoo Finance" icon="chart-line" color="#7B3FF2">
+    Access stocks, ETFs, indices, commodities, and currencies from global markets.
+  </Card>
+  
+  <Card title="Binance" icon="bitcoin" color="#F0B90B">
+    Real-time and historical cryptocurrency trading data with high precision.
+  </Card>
+</CardGroup>
+
+## Data Source Selection
+
+The platform uses an enum-based system for selecting data sources:
+
+```typescript
+enum Source {
+    yfinance,  // Yahoo Finance
+    binance    // Binance
+}
+```
+
+<Info>
+The data source is typically selected during chart initialization based on the symbol type or user preference.
+</Info>
+
+## Binance Data Source
+
+### Overview
+
+Binance integration provides access to cryptocurrency market data through the Binance API, powered by the PineTS provider.
+
+### Features
+
+<AccordionGroup>
+  <Accordion title="Real-time Data">
+    Fetch the latest candlestick data with minimal delay.
+  </Accordion>
+  
+  <Accordion title="Historical Data">
+    Access extensive historical data for backtesting and analysis.
+  </Accordion>
+  
+  <Accordion title="Symbol Search">
+    Search and filter available trading pairs.
+  </Accordion>
+  
+  <Accordion title="Multiple Timeframes">
+    Support for various timeframes from 1-minute to monthly charts.
+  </Accordion>
+</AccordionGroup>
+
+### Fetching Binance Data
+
+```typescript
+const source = Source.binance
+const ticker = "BTCUSDT"  // Bitcoin to USDT pair
+const tframe = TFrame.parse("1h")  // 1-hour timeframe
+const tzone = "UTC"
+const limit = 500  // Number of candles to fetch
+
+await fetchData(source, baseSer, ticker, tframe, tzone, undefined, limit)
+```
+
+### Data Structure
+
+Binance returns kline (candlestick) data with these fields:
+
+<ResponseField name="openTime" type="number">
+  Candle open time in milliseconds (Unix timestamp)
+</ResponseField>
+
+<ResponseField name="open" type="number">
+  Opening price
+</ResponseField>
+
+<ResponseField name="high" type="number">
+  Highest price during the period
+</ResponseField>
+
+<ResponseField name="low" type="number">
+  Lowest price during the period
+</ResponseField>
+
+<ResponseField name="close" type="number">
+  Closing price
+</ResponseField>
+
+<ResponseField name="volume" type="number">
+  Trading volume during the period
+</ResponseField>
+
+<ResponseField name="closeTime" type="number">
+  Candle close time in milliseconds
+</ResponseField>
+
+### Symbol List
+
+Fetch available Binance trading pairs:
+
+```typescript
+const symbols = await fetchSymbolList(
+  Source.binance,
+  "BTC",  // Filter text (shows pairs containing "BTC")
+  init    // RequestInit object
+)
+// Returns: [{ ticker: "BTCUSDT" }, { ticker: "BTCETH" }, ...]
+```
+
+<Tip>
+Use the filter parameter to narrow down results when searching for specific trading pairs.
+</Tip>
+
+## Yahoo Finance Data Source
+
+### Overview
+
+Yahoo Finance integration provides access to a vast array of financial instruments including stocks, ETFs, indices, commodities, currencies, and more.
+
+### Features
+
+<AccordionGroup>
+  <Accordion title="Global Markets">
+    Access data from stock exchanges worldwide.
+  </Accordion>
+  
+  <Accordion title="Multiple Asset Types">
+    Stocks, ETFs, indices, forex, commodities, and cryptocurrencies.
+  </Accordion>
+  
+  <Accordion title="Historical Data">
+    Extensive historical data going back many years.
+  </Accordion>
+  
+  <Accordion title="Adjusted Prices">
+    Corporate actions (splits, dividends) are reflected in the data.
+  </Accordion>
+</AccordionGroup>
+
+### Fetching Yahoo Finance Data
+
+```typescript
+const source = Source.yfinance
+const ticker = "AAPL"  // Apple Inc.
+const tframe = TFrame.parse("1D")  // Daily timeframe
+const tzone = "America/New_York"
+const limit = 300  // Number of periods to fetch
+
+await fetchData(source, baseSer, ticker, tframe, tzone, undefined, limit)
+```
+
+### Time Handling
+
+<Warning>
+Yahoo Finance API requires Unix timestamps in **seconds**, not milliseconds. The VibeTrader implementation automatically converts:
+
+```typescript
+startTime = Math.floor(startTime / 1000)  // Convert ms to seconds
+endTime = Math.floor(Date.now() / 1000)
+```
+</Warning>
+
+### Symbol Examples
+
+<CodeGroup>
+```typescript Stocks
+"AAPL"   // Apple Inc.
+"MSFT"   // Microsoft
+"GOOGL"  // Alphabet (Google)
+"TSLA"   // Tesla
+```
+
+```typescript Indices
+"^GSPC"  // S&P 500
+"^DJI"   // Dow Jones Industrial Average
+"^IXIC"  // NASDAQ Composite
+"^FTSE"  // FTSE 100
+```
+
+```typescript Forex
+"EURUSD=X"  // Euro to US Dollar
+"GBPUSD=X"  // British Pound to US Dollar
+"USDJPY=X"  // US Dollar to Japanese Yen
+```
+
+```typescript Commodities
+"GC=F"  // Gold Futures
+"CL=F"  // Crude Oil Futures
+"SI=F"  // Silver Futures
+```
+</CodeGroup>
+
+### Symbol Search
+
+```typescript
+const symbols = await fetchSymbolList(
+  Source.yfinance,
+  "AAPL",  // Search query
+  init
+)
+```
+
+## Unified Data Fetching
+
+The `fetchData` function provides a unified interface for both data sources:
+
+### Function Signature
+
+```typescript
+fetchData(
+  source: Source,        // yfinance or binance
+  baseSer: TSer,        // Time series object to populate
+  ticker: string,       // Symbol/ticker to fetch
+  tframe: TFrame,       // Timeframe (1m, 5m, 1h, 1D, etc.)
+  tzone: string,        // Timezone (e.g., "UTC", "America/New_York")
+  startTime?: number,   // Optional start time (milliseconds)
+  limit?: number        // Optional limit on number of candles
+): Promise<number>      // Returns latest candle timestamp
+```
+
+### Parameters
+
+<ParamField path="source" type="Source" required>
+  The data source to use (`Source.yfinance` or `Source.binance`)
+</ParamField>
+
+<ParamField path="baseSer" type="TSer" required>
+  The time series object where data will be stored
+</ParamField>
+
+<ParamField path="ticker" type="string" required>
+  The symbol/ticker identifier for the instrument
+</ParamField>
+
+<ParamField path="tframe" type="TFrame" required>
+  The timeframe for the data (e.g., `TFrame.parse("1h")` for hourly)
+</ParamField>
+
+<ParamField path="tzone" type="string" required>
+  The timezone for timestamp interpretation
+</ParamField>
+
+<ParamField path="startTime" type="number">
+  Optional start time in milliseconds. If not provided, calculated based on `limit`
+</ParamField>
+
+<ParamField path="limit" type="number">
+  Optional maximum number of candles to fetch. Default varies by implementation
+</ParamField>
+
+### Return Value
+
+Returns a `Promise<number>` containing the timestamp of the most recent candle, or `undefined` if no data was fetched.
+
+## Timeframe Support
+
+### Common Timeframes
+
+<Tabs>
+  <Tab title="Intraday">
+    - `1m` - 1 minute
+    - `5m` - 5 minutes
+    - `15m` - 15 minutes
+    - `30m` - 30 minutes
+    - `1h` - 1 hour
+    - `4h` - 4 hours
+  </Tab>
+  
+  <Tab title="Daily+">
+    - `1D` - 1 day (Daily)
+    - `1W` - 1 week (Weekly)
+    - `1M` - 1 month (Monthly)
+    - `1Y` - 1 year (Yearly)
+  </Tab>
+</Tabs>
+
+### Timeframe Conversion
+
+<Info>
+Binance uses PineTS provider timeframe notation. The implementation handles automatic conversion:
+
+```typescript
+const pinets_tframe = Binance.timeframe_to_pinetsProvider[tframe.shortName] 
+  || tframe.shortName
+```
+</Info>
+
+## Data Processing
+
+### Automatic Deduplication
+
+Both data sources implement automatic deduplication:
+
+```typescript
+// Sort by time to ensure chronological order
+binanceKline.sort((a, b) => a.openTime - b.openTime)
+
+// Remove duplicates based on openTime
+const uniqueKlines = binanceKline.filter(
+  (kline, index, self) => 
+    index === self.findIndex((k) => k.openTime === kline.openTime)
+)
+```
+
+### Kline Object Creation
+
+Data from both sources is converted to a unified `Kline` object:
+
+```typescript
+const kline = new Kline(
+  openTime,   // Open time
+  open,       // Open price
+  high,       // High price
+  low,        // Low price
+  close,      // Close price
+  volume,     // Volume
+  openTime,   // Begin time (same as openTime)
+  closeTime,  // End time
+  true        // Is occurred (data exists)
+)
+
+baseSer.addToVar(KVAR_NAME, kline)
+```
+
+## Fallback Mechanism
+
+If API fetching fails, the system falls back to local data:
+
+```typescript
+// If API returns undefined, try loading local klines.json
+return fetch("./klines.json")
+  .then(r => r.json())
+  .then(json => {
+    for (const k of json) {
+      const time = Date.parse(k.Date)
+      const kline = new Kline(time, k.Open, k.High, k.Low, k.Close, k.Volume, time, time, true)
+      baseSer.addToVar(KVAR_NAME, kline)
+    }
+  })
+```
+
+<Note>
+Local data should be in JSON format with fields: `Date`, `Open`, `High`, `Low`, `Close`, `Volume`
+</Note>
+
+## Time Range Calculation
+
+When `startTime` is not provided, it's calculated based on `limit`:
+
+```typescript
+const endTime = new Date().getTime()
+const backLimitTime = tframe.timeBeforeNTimeframes(endTime, limit, tzone)
+startTime = startTime || backLimitTime
+```
+
+This ensures you get the most recent `limit` number of candles.
+
+## Error Handling
+
+<AccordionGroup>
+  <Accordion title="Network Errors">
+    If the API request fails due to network issues, the promise rejects and should be caught by your error handler.
+  </Accordion>
+  
+  <Accordion title="Invalid Symbols">
+    Invalid symbols may return empty data or error responses. Always validate symbol format before fetching.
+  </Accordion>
+  
+  <Accordion title="Rate Limiting">
+    Both APIs have rate limits. Implement request throttling for production use.
+  </Accordion>
+  
+  <Accordion title="Missing Data">
+    Some symbols or timeframes may not have complete historical data. Handle cases where fewer candles than requested are returned.
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Cache Data" icon="database">
+    Cache fetched data locally to reduce API calls and improve load times.
+  </Card>
+  
+  <Card title="Use Appropriate Limits" icon="chart-bar">
+    Request only the data you need. Smaller limits mean faster responses.
+  </Card>
+  
+  <Card title="Handle Timezones" icon="clock">
+    Always specify the correct timezone for your symbols to ensure accurate timestamps.
+  </Card>
+  
+  <Card title="Validate Symbols" icon="check">
+    Use symbol search to validate symbols before fetching data.
+  </Card>
+</CardGroup>
+
+## Example: Complete Data Fetching Flow
+
+```typescript
+import { fetchData, Source } from './lib/domain/DataFecther'
+import { TFrame } from './lib/timeseris/TFrame'
+import { TSer } from './lib/timeseris/TSer'
+
+// Initialize time series
+const baseSer = new TSer()
+
+// Configure request
+const source = Source.binance
+const ticker = "ETHUSDT"
+const tframe = TFrame.parse("1h")
+const tzone = "UTC"
+const limit = 500
+
+try {
+  // Fetch data
+  const latestTime = await fetchData(
+    source,
+    baseSer,
+    ticker,
+    tframe,
+    tzone,
+    undefined,
+    limit
+  )
+  
+  console.log(`Fetched ${baseSer.size()} candles`)
+  console.log(`Latest candle time: ${new Date(latestTime)}`)
+  
+  // Now baseSer contains all the kline data
+  // Ready to display on charts
+  
+} catch (error) {
+  console.error('Failed to fetch data:', error)
+  // Handle error appropriately
+}
+```
+
+<Tip>
+For real-time updates, implement periodic refetching with a timestamp-based approach to only fetch new candles since the last update.
+</Tip>

@@ -1,0 +1,192 @@
+---
+title: 'Chart Controls'
+description: 'Learn how to navigate, zoom, and pan charts in VibeTrader'
+---
+
+## Overview
+
+VibeTrader provides comprehensive chart controls for navigating time-series data. The chart control system manages both horizontal (time) and vertical (price/value) navigation through the `ChartXControl` and `ChartYControl` classes.
+
+## Horizontal Navigation (Time Axis)
+
+### Mouse Controls
+
+<AccordionGroup>
+  <Accordion title="Drag to Move">
+    Click and drag on the chart to move horizontally through time. The chart scrolls smoothly as you drag, allowing you to view historical data.
+  </Accordion>
+
+  <Accordion title="Wheel to Scroll">
+    Use your mouse wheel to scroll through the chart horizontally. Each wheel increment moves the chart by one bar or by 16.8% of visible bars when accelerated (Space key pressed).
+  </Accordion>
+
+  <Accordion title="Ctrl + Drag to Scale">
+    Hold `Ctrl` and drag to scale the chart horizontally, adjusting the number of visible bars and bar width.
+  </Accordion>
+
+  <Accordion title="Shift + Wheel to Zoom">
+    Hold `Shift` and use the mouse wheel to zoom in/out of the chart, changing the bar width and number of visible bars.
+  </Accordion>
+</AccordionGroup>
+
+### Keyboard Controls
+
+<CardGroup cols={2}>
+  <Card title="Left/Right Arrow" icon="arrows-left-right">
+    Move the chart left or right by one bar. Hold `Space` for accelerated movement (16.8% of visible bars).
+  </Card>
+  
+  <Card title="Up/Down Arrow" icon="arrows-up-down">
+    Zoom in/out of the chart by changing the bar width through predefined width levels.
+  </Card>
+  
+  <Card title="Space" icon="rocket">
+    Toggle between normal and fast movement speed. When active, chart movements use 16.8% of visible bars instead of single bar increments.
+  </Card>
+  
+  <Card title="ESC" icon="xmark">
+    Remove the reference cursor or hide the crosshair.
+  </Card>
+</CardGroup>
+
+## Vertical Navigation (Price Axis)
+
+### Scaling and Scrolling
+
+The chart automatically scales the Y-axis based on the visible data range, but you can manually adjust it:
+
+- **Chart Scale**: The vertical scale can be adjusted to zoom in/out on price movements
+- **Auto-scaling**: The chart maintains proper spacing with configurable upper and lower margins
+- **Value Normalization**: Large values are automatically normalized (e.g., "x 10^6") for better readability
+
+<Note>
+The Y-axis uses a minimum tick spacing of 40 pixels to ensure labels don't overlap.
+</Note>
+
+## Reference Cursor
+
+The reference cursor is a special marker that helps you focus on specific data points:
+
+<Steps>
+  <Step title="Place Reference Cursor">
+    Double-click on the chart to place a reference cursor at that location.
+  </Step>
+  
+  <Step title="Move Reference Cursor">
+    Use `Ctrl + Left/Right Arrow` to move the reference cursor horizontally.
+  </Step>
+  
+  <Step title="Remove Reference Cursor">
+    Double-click on the Y-axis or press `ESC` to remove the reference cursor.
+  </Step>
+</Steps>
+
+### Reference Cursor Behavior
+
+- The chart maintains minimum padding around the reference cursor (1 bar on each side)
+- When moving the reference cursor near chart edges, the entire chart automatically scrolls to maintain visibility
+- The cursor can be moved independently or together with the chart viewport
+
+## Bar Width System
+
+<Info>
+VibeTrader uses predefined bar width levels for consistent zoom behavior:
+
+```typescript
+[0.00025, 0.0005, 0.001, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 4, 6, 8, 10, 20]
+```
+
+Bar widths are measured in pixels per bar.
+</Info>
+
+### Zoom Levels
+
+- **Minimum Width**: 0.00025 pixels (ultra-compressed view for long-term analysis)
+- **Default Width**: 6 pixels (index 8 in the predefined array)
+- **Maximum Width**: 20 pixels (detailed view for short-term analysis)
+
+## Advanced Features
+
+### Calendar vs Occurred Mode
+
+VibeTrader supports two time display modes:
+
+<CodeGroup>
+```typescript Calendar Mode
+// Shows all calendar time periods, including gaps
+xControl.setOnCalendarMode(true)
+```
+
+```typescript Occurred Mode  
+// Shows only periods with actual data, compressing gaps
+xControl.setOnCalendarMode(false)
+```
+</CodeGroup>
+
+### Auto-Scroll to New Data
+
+When new data arrives, the chart can automatically scroll to display it:
+
+```typescript
+xControl.isAutoScrollToNewData = true // Enable auto-scroll
+```
+
+### Time Tick Labels
+
+The X-axis intelligently displays time labels based on the timeframe:
+
+- **Minute charts**: Show minute, hour, day, month, and year boundaries
+- **Hourly charts**: Show hour, day, month, and year boundaries  
+- **Daily charts**: Show day, month, and year boundaries
+- **Weekly charts**: Show week, month, and year boundaries
+- **Monthly charts**: Show month and year boundaries
+- **Yearly charts**: Show year boundaries
+
+<Tip>
+Time tick density automatically adjusts based on chart width to maintain a minimum spacing of 100 pixels between labels.
+</Tip>
+
+## Value Tick Labels
+
+The Y-axis automatically calculates appropriate tick intervals:
+
+- Maximum of 6 ticks with minimum 40-pixel spacing
+- Automatically normalizes large values (displays "x 10^n" multiplier)
+- Special handling for charts crossing zero (always shows 0 tick)
+- Intelligent tick unit selection for readable values
+
+## Coordinate Conversions
+
+The control system provides comprehensive coordinate conversion methods:
+
+<CodeGroup>
+```typescript X-Axis Conversions
+// Bar index <-> X coordinate
+const x = xControl.xb(barIndex)  // barIndex to x
+const barIndex = xControl.bx(x)  // x to barIndex
+
+// Time <-> X coordinate  
+const x = xControl.xr(row)       // row to x
+const time = xControl.tx(x)      // x to time
+
+// Time <-> Bar index
+const barIndex = xControl.bt(time) // time to barIndex
+const time = xControl.tb(barIndex) // barIndex to time
+```
+
+```typescript Y-Axis Conversions
+// Value <-> Y coordinate
+const y = yControl.yv(value)  // value to y
+const value = yControl.vy(y)  // y to value
+```
+</CodeGroup>
+
+## Performance Considerations
+
+- Charts update geometry calculations when bar width, visible bars, or scale changes
+- Compressed bars (width < 1 pixel) are automatically grouped for performance
+- Mouse cursor updates are throttled when mouse exits chart area
+
+<Warning>
+When working with very large datasets, use smaller bar widths to reduce memory usage and improve rendering performance.
+</Warning>

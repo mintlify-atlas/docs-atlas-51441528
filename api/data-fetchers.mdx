@@ -1,0 +1,387 @@
+---
+title: 'Data Fetching APIs'
+description: 'API reference for fetching market data and symbol lists from various providers'
+---
+
+## fetchData
+
+Fetches historical market data (klines/candlesticks) from a data provider and populates a time series.
+
+### Function Signature
+
+```typescript
+fetchData(
+  source: Source,
+  baseSer: TSer,
+  ticker: string,
+  tframe: TFrame,
+  tzone: string,
+  startTime?: number,
+  limit?: number
+): Promise<number>
+```
+
+### Parameters
+
+<ParamField path="source" type="Source" required>
+  Data source provider: `Source.yfinance` or `Source.binance`
+</ParamField>
+
+<ParamField path="baseSer" type="TSer" required>
+  Base time series object to populate with fetched kline data
+</ParamField>
+
+<ParamField path="ticker" type="string" required>
+  Symbol/ticker to fetch (e.g., "BTCUSDT" for Binance, "AAPL" for Yahoo Finance)
+</ParamField>
+
+<ParamField path="tframe" type="TFrame" required>
+  Timeframe object specifying the interval (e.g., 1m, 5m, 1h, 1d)
+</ParamField>
+
+<ParamField path="tzone" type="string" required>
+  Timezone string for time calculations (e.g., "America/New_York", "UTC")
+</ParamField>
+
+<ParamField path="startTime" type="number">
+  Starting timestamp in milliseconds. If not provided, defaults to `limit` periods back from now.
+</ParamField>
+
+<ParamField path="limit" type="number">
+  Maximum number of klines to fetch. If not provided, defaults to provider-specific limits.
+</ParamField>
+
+### Return Value
+
+<ResponseField name="Promise<number>" type="number">
+  Returns a promise that resolves to the timestamp of the latest kline fetched, or `undefined` if no data was fetched.
+</ResponseField>
+
+### Example Usage
+
+```typescript
+import { fetchData, Source } from './lib/domain/DataFecther';
+import { TSer } from './lib/timeseris/TSer';
+import { TFrame } from './lib/timeseris/TFrame';
+
+const baseSer = new TSer();
+const tframe = new TFrame('1h'); // 1 hour timeframe
+
+// Fetch Bitcoin data from Binance
+const latestTime = await fetchData(
+  Source.binance,
+  baseSer,
+  'BTCUSDT',
+  tframe,
+  'UTC',
+  undefined,  // Auto-calculate start time
+  500         // Fetch 500 candles
+);
+
+console.log('Latest candle time:', new Date(latestTime));
+
+// Fetch Apple stock data from Yahoo Finance
+await fetchData(
+  Source.yfinance,
+  baseSer,
+  'AAPL',
+  new TFrame('1d'),
+  'America/New_York',
+  Date.now() - 365 * 24 * 60 * 60 * 1000,  // 1 year ago
+  365  // 365 days
+);
+```
+
+### Data Processing
+
+1. Fetches klines from the specified provider
+2. Sorts klines chronologically by open time
+3. Removes any duplicate klines
+4. Creates `Kline` objects and adds them to `baseSer` using `KVAR_NAME` ("kline")
+5. Returns the timestamp of the latest kline
+
+### Fallback Behavior
+
+If the provider fetch fails or returns no data, the function attempts to load data from a local `./klines.json` file.
+
+Source: `DataFecther.ts:13-35`
+
+---
+
+## fetchSymbolList
+
+Fetches a list of available symbols/tickers from a data provider, filtered by search text.
+
+### Function Signature
+
+```typescript
+fetchSymbolList(
+  source: Source,
+  filterText: string,
+  init: RequestInit
+): Promise<{ ticker: string }[]>
+```
+
+### Parameters
+
+<ParamField path="source" type="Source" required>
+  Data source provider: `Source.yfinance` or `Source.binance`
+</ParamField>
+
+<ParamField path="filterText" type="string" required>
+  Search/filter text to match against symbol names (e.g., "BTC", "AAPL")
+</ParamField>
+
+<ParamField path="init" type="RequestInit" required>
+  Fetch API initialization options (for request cancellation, headers, etc.)
+</ParamField>
+
+### Return Value
+
+<ResponseField name="Promise<Array>" type="{ ticker: string }[]">
+  Returns a promise that resolves to an array of objects, each containing a `ticker` property with the symbol name.
+</ResponseField>
+
+### Example Usage
+
+```typescript
+import { fetchSymbolList, Source } from './lib/domain/DataFecther';
+
+// Search for Bitcoin symbols on Binance
+const binanceSymbols = await fetchSymbolList(
+  Source.binance,
+  'BTC',
+  { signal: abortController.signal }
+);
+
+console.log(binanceSymbols);
+// Output: [{ ticker: 'BTCUSDT' }, { ticker: 'BTCBUSD' }, ...]
+
+// Search for Apple-related symbols on Yahoo Finance
+const yahooSymbols = await fetchSymbolList(
+  Source.yfinance,
+  'AAPL',
+  {}
+);
+
+console.log(yahooSymbols);
+// Output: [{ ticker: 'AAPL' }, { ticker: 'AAPL.MX' }, ...]
+```
+
+### Use Cases
+
+- Symbol search/autocomplete in trading interfaces
+- Building watchlists
+- Symbol validation before fetching data
+
+Source: `DataFecther.ts:120-139`
+
+---
+
+## Source Enum
+
+Enumeration of supported data providers.
+
+### Values
+
+<ResponseField name="yfinance" type="number">
+  Yahoo Finance - supports stocks, ETFs, indices, forex, cryptocurrencies
+</ResponseField>
+
+<ResponseField name="binance" type="number">
+  Binance - cryptocurrency exchange data
+</ResponseField>
+
+### Example
+
+```typescript
+import { Source } from './lib/domain/DataFecther';
+
+// Use enum values
+const source = Source.binance;
+
+// Check source type
+if (source === Source.yfinance) {
+  console.log('Using Yahoo Finance');
+} else if (source === Source.binance) {
+  console.log('Using Binance');
+}
+```
+
+Source: `DataFecther.ts:8-11`
+
+---
+
+## Kline Class
+
+Represents a single candlestick/kline with OHLCV (Open-High-Low-Close-Volume) data.
+
+### Constructor
+
+```typescript
+constructor(
+  time: number,
+  open: number,
+  high: number,
+  low: number,
+  close: number,
+  volume: number,
+  openTime: number,
+  closeTime: number,
+  isClosed: boolean
+)
+```
+
+### Properties
+
+<ResponseField name="time" type="number">
+  Primary timestamp for this kline (milliseconds)
+</ResponseField>
+
+<ResponseField name="open" type="number">
+  Opening price
+</ResponseField>
+
+<ResponseField name="high" type="number">
+  Highest price during the period
+</ResponseField>
+
+<ResponseField name="low" type="number">
+  Lowest price during the period
+</ResponseField>
+
+<ResponseField name="close" type="number">
+  Closing price
+</ResponseField>
+
+<ResponseField name="volume" type="number">
+  Trading volume during the period
+</ResponseField>
+
+<ResponseField name="openTime" type="number">
+  Timestamp when the kline period opened (milliseconds)
+</ResponseField>
+
+<ResponseField name="closeTime" type="number">
+  Timestamp when the kline period closed (milliseconds)
+</ResponseField>
+
+<ResponseField name="isClosed" type="boolean">
+  Whether this kline is complete (closed) or still forming (real-time)
+</ResponseField>
+
+<ResponseField name="value" type="number" getter>
+  Getter that returns the close price (for compatibility with TVal)
+</ResponseField>
+
+### Methods
+
+<ParamField path="update" type="(value: number, amount: number) => Kline">
+  Updates a real-time kline with a new price tick and volume.
+  
+  - Updates `high` if the new value is higher
+  - Updates `low` if the new value is lower
+  - Sets `close` to the new value
+  - Adds `amount` to cumulative `volume`
+  
+  Returns: `this` (for method chaining)
+  
+  Source: `Kline.ts:43-50`
+</ParamField>
+
+<ParamField path="closeIt" type="() => Kline">
+  Marks the kline as closed/completed.
+  
+  Returns: `this` (for method chaining)
+  
+  Source: `Kline.ts:52-56`
+</ParamField>
+
+<ParamField path="toJson" type="() => object">
+  Serializes the kline to a JSON object.
+  
+  Returns: Object with properties: `time`, `open`, `high`, `low`, `close`, `volume`, `isClosed`
+  
+  Source: `Kline.ts:58-68`
+</ParamField>
+
+### Example Usage
+
+```typescript
+import { Kline } from './lib/domain/Kline';
+
+// Create a new kline
+const kline = new Kline(
+  Date.now(),          // time
+  50000,               // open
+  50500,               // high
+  49800,               // low
+  50200,               // close
+  1500.5,              // volume
+  Date.now() - 3600000, // openTime (1 hour ago)
+  Date.now(),          // closeTime
+  true                 // isClosed
+);
+
+// Access properties
+console.log('Close price:', kline.close);
+console.log('Value:', kline.value); // Same as close
+
+// Update a real-time kline
+kline.isClosed = false;
+kline.update(50300, 50); // New price: 50300, volume: 50
+
+// Close the kline
+kline.closeIt();
+
+// Serialize to JSON
+const json = kline.toJson();
+console.log(json);
+```
+
+### Constant
+
+<ResponseField name="KVAR_NAME" type="string" value="'kline'">
+  The variable name used to store klines in time series: `"kline"`
+  
+  Source: `Kline.ts:4`
+</ResponseField>
+
+Source: `Kline.ts:6-71`
+
+---
+
+## Provider-Specific Notes
+
+### Binance Provider
+
+- Uses the `pinets` library's Binance provider
+- Supports cryptocurrency pairs (e.g., BTCUSDT, ETHUSDT)
+- Timeframe conversion: VibeTrader timeframes are mapped to Binance/pinets equivalents
+- Data includes: open, high, low, close, volume, openTime, closeTime
+
+Source: `DataFecther.ts:49-86`
+
+### Yahoo Finance Provider
+
+- Supports stocks, ETFs, indices, forex, and cryptocurrencies
+- Ticker format: Standard Yahoo Finance symbols (e.g., "AAPL", "^GSPC")
+- Timestamps are converted to Unix seconds for the Yahoo Finance API
+- Data includes: time, open, high, low, close, volume
+
+Source: `DataFecther.ts:88-117`
+
+### Timeframe Handling
+
+Both providers automatically calculate the start time based on:
+- The specified `limit` (number of klines)
+- The `tframe` (timeframe interval)
+- The `tzone` (timezone)
+
+If `startTime` is provided, it overrides the calculated value.
+
+### Error Handling
+
+If the remote provider fetch fails, the system attempts to load data from a local `./klines.json` file as a fallback. This is useful for development and offline testing.
+
+Source: `DataFecther.ts:37-47`

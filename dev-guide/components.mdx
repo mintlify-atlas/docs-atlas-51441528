@@ -1,0 +1,607 @@
+---
+title: "Component Hierarchy"
+description: "Understanding the component organization in VibeTrader's charting system"
+---
+
+## Overview
+
+VibeTrader's charting system is built on a hierarchical component architecture, with each layer responsible for specific rendering and interaction concerns.
+
+## Component Hierarchy
+
+```
+KlineViewContainer (Container)
+├── Title (Pane)
+├── AxisX (Pane)
+├── KlineView (View)
+│   ├── PlotKline (Plot)
+│   ├── PlotLine (Plot - overlays)
+│   ├── AxisY (Pane)
+│   └── Drawings (Drawing)
+├── VolumeView (View)
+│   ├── PlotHistogram (Plot)
+│   └── AxisY (Pane)
+└── IndicatorView[] (View)
+    ├── PlotLine (Plot)
+    ├── PlotStepLine (Plot)
+    ├── PlotCrossCircles (Plot)
+    ├── PlotShape (Plot)
+    ├── PlotHline (Plot)
+    ├── PlotFill (Plot)
+    ├── PlotBgcolor (Plot)
+    └── AxisY (Pane)
+```
+
+## Layer 1: Container
+
+### KlineViewContainer
+
+The top-level container that orchestrates all chart views and manages global state.
+
+**Location**: `src/lib/charting/view/KlineViewContainer.tsx`
+
+**Responsibilities**:
+
+- Manages `ChartXControl` shared across all views
+- Handles data fetching and series initialization
+- Controls layout (stacked indicators, overlays)
+- Manages user interactions (pan, zoom, drawing)
+- Coordinates updates across all child views
+- Handles indicator execution via PineTS
+
+**Key Properties**:
+
+```typescript
+class KlineViewContainer extends Component<Props, State> {
+    ticker: string;
+    tframe: TFrame;
+    tzone: string;
+    
+    baseSer: TSer;              // Main time series
+    kvar: TVar<Kline>;          // Kline data variable
+    xc: ChartXControl;          // Shared X-axis control
+    
+    overlayIndicators: Indicator[];   // Overlays on price chart
+    stackedIndicators: Indicator[];   // Separate indicator panels
+}
+```
+
+**State Management**:
+
+```typescript
+type State = {
+    chartviewWidth: number
+    updateEvent?: UpdateEvent;
+    updateDrawing?: UpdateDrawing;
+    
+    overlayIndicators?: Indicator[];
+    stackedIndicators?: Indicator[];
+    
+    yKlineView: number;         // Y-position of price chart
+    yVolumeView: number;        // Y-position of volume chart
+    yIndicatorViews: number;    // Y-position of indicators
+    yAxisx: number;             // Y-position of X-axis
+    
+    isLoaded: boolean;
+}
+```
+
+## Layer 2: Views
+
+Views are responsible for rendering a specific aspect of the chart (price, volume, or indicator).
+
+### ChartView (Abstract Base)
+
+**Location**: `src/lib/charting/view/ChartView.tsx`
+
+The abstract base class for all chart views.
+
+**Interface**:
+
+```typescript
+export interface ViewProps {
+    name: string;
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    xc: ChartXControl;
+    tvar: TVar<unknown>;
+    
+    updateEvent: UpdateEvent;
+    updateDrawing?: UpdateDrawing;
+    
+    mainIndicatorOutputs?: Output[]
+    indexOfStackedIndicator?: number
+    overlayIndicators?: Indicator[];
+    
+    callbacksToContainer?: CallbacksToContainer;
+}
+
+export interface ViewState {
+    chartLines: JSX.Element[];
+    chartAxisy?: JSX.Element;
+    gridLines?: JSX.Element;
+    overlayChartLines?: JSX.Element[];
+    drawingLines?: JSX.Element[];
+    
+    mouseCursor?: JSX.Element
+    referCursor?: JSX.Element
+    latestValueLabel?: JSX.Element
+    sketching?: JSX.Element
+    
+    cursor?: string;
+}
+```
+
+**Key Methods**:
+
+```typescript
+abstract class ChartView<P extends ViewProps, S extends ViewState> {
+    yc: ChartYControl;  // Y-axis control (view-specific)
+    
+    // Compute value range for Y-axis scaling
+    protected abstract computeMaxValueMinValue(): [number, number];
+    
+    // Generate plot elements
+    protected abstract plot(): Partial<ViewState>;
+    
+    // Get value at specific time
+    protected abstract valueAtTime(time: number): number;
+    
+    // Compute geometry based on data range
+    protected computeGeometry(atleastMinValue?: number): void;
+    
+    // Render overlay indicators
+    protected plotOverlayCharts(): JSX.Element[];
+    
+    // Render drawing tools
+    protected plotDrawings(): JSX.Element[];
+    
+    // Render grid lines
+    protected plotGrids(): JSX.Element;
+}
+```
+
+### KlineView
+
+**Location**: `src/lib/charting/view/KlineView.tsx`
+
+Renders the main price chart with candlesticks and overlays.
+
+**Implementation**:
+
+```typescript
+export class KlineView extends ChartView<ViewProps, ViewState> {
+    constructor(props: ViewProps) {
+        super(props);
+        this.yc.valueScalar = LINEAR_SCALAR;
+        
+        const { chartLines, chartAxisy, gridLines, 
+                overlayChartLines, drawingLines } = this.plot();
+        
+        this.state = {
+            chartLines,
+            chartAxisy,
+            gridLines,
+            overlayChartLines,
+            drawingLines
+        };
+    }
+    
+    override plot() {
+        this.computeGeometry();
+        
+        const chartLines = [
+            <PlotKline
+                kvar={this.props.tvar as TVar<Kline>}
+                xc={this.props.xc}
+                yc={this.yc}
+                kind={this.props.xc.klineKind}
+                depth={0}
+            />
+        ]
+        
+        const chartAxisy = <AxisY
+            x={this.props.width - ChartView.AXISY_WIDTH}
+            y={0}
+            height={this.props.height}
+            xc={this.props.xc}
+            yc={this.yc}
+        />
+        
+        const overlayChartLines = this.plotOverlayCharts();
+        const drawingLines = this.plotDrawings()
+        
+        return { chartLines, chartAxisy, overlayChartLines, drawingLines }
+    }
+    
+    override computeMaxValueMinValue() {
+        let max = Number.NEGATIVE_INFINITY;
+        let min = Number.POSITIVE_INFINITY;
+        
+        for (let i = 1; i <= this.props.xc.nBars; i++) {
+            const time = this.props.xc.tb(i)
+            if (this.props.xc.occurred(time)) {
+                const kline = this.props.tvar.getByTime(time) as Kline;
+                if (kline.close > 0) {
+                    max = Math.max(max, kline.high)
+                    min = Math.min(min, kline.low)
+                }
+            }
+        }
+        
+        return [max, min]
+    }
+    
+    swithScalarType() {
+        // Cycle through LINEAR_SCALAR, LG_SCALAR, LN_SCALAR
+    }
+}
+```
+
+### VolumeView
+
+**Location**: `src/lib/charting/view/VolumeView.tsx`
+
+Renders the volume histogram below the price chart.
+
+### IndicatorView
+
+**Location**: `src/lib/charting/view/IndicatorView.tsx`
+
+Renders stacked indicator panels (RSI, MACD, etc.).
+
+**Indicator Definition**:
+
+```typescript
+export type Indicator = {
+    scriptName: string,
+    tvar: TVar<PineData[]>,
+    outputs: Output[],
+    overlay?: boolean  // If true, rendered on KlineView
+}
+
+export type Output = {
+    atIndex: number,      // Index in PineData array
+    title: string,
+    options: PlotOptions  // Style, color, linewidth, etc.
+}
+```
+
+## Layer 3: Plots
+
+Plot components are responsible for rendering specific visual elements.
+
+**Location**: `src/lib/charting/plot/`
+
+### PlotKline
+
+Renders OHLCV candlesticks or bars.
+
+**Props**:
+
+```typescript
+type PlotKlineProps = {
+    kvar: TVar<Kline>,
+    xc: ChartXControl,
+    yc: ChartYControl,
+    kind: KlineKind,  // 'candle' | 'bar' | 'line'
+    depth: number
+}
+```
+
+### PlotLine
+
+Renders continuous lines for indicators.
+
+```typescript
+<PlotLine
+    tvar={tvar}
+    name={title}
+    options={options}
+    atIndex={atIndex}
+    xc={xc}
+    yc={yc}
+    depth={depth}
+/>
+```
+
+### PlotStepLine
+
+Renders step lines (horizontal segments with vertical steps).
+
+### PlotHistogram
+
+Renders histogram bars (used for volume, MACD histogram).
+
+### PlotCrossCircles
+
+Renders cross or circle markers at data points.
+
+### PlotShape
+
+Renders custom shapes (arrows, flags, triangles) for signals.
+
+### PlotHline
+
+Renders horizontal reference lines.
+
+### PlotFill
+
+Fills the area between two plot lines.
+
+### PlotBgcolor
+
+Applies background color to chart regions.
+
+### PlotDrawingLine
+
+Renders user-drawn trend lines and shapes.
+
+### Plot Type Selection
+
+The view selects the appropriate plot component based on `options.style`:
+
+```typescript
+protected plotOverlayCharts() {
+    switch (options.style) {
+        case 'style_line':
+            return <PlotLine ... />
+        
+        case 'style_stepline':
+            return <PlotStepLine ... />
+        
+        case 'style_circles':
+            return <PlotCrossCircles ... />
+        
+        case 'shape':
+            return <PlotShape ... />
+        
+        case 'hline':
+            return <PlotHline ... />
+        
+        case 'fill':
+            return <PlotFill ... />
+        
+        case 'background':
+            return <PlotBgcolor ... />
+        
+        // ... more cases
+    }
+}
+```
+
+## Layer 4: Panes
+
+Pane components render UI elements around the chart.
+
+**Location**: `src/lib/charting/pane/`
+
+### AxisX
+
+**Location**: `src/lib/charting/pane/AxisX.tsx`
+
+Renders the time axis at the bottom of the chart.
+
+**Features**:
+
+- Intelligent tick spacing based on timeframe
+- Multi-level labeling (year, month, day, hour, minute)
+- Timezone-aware formatting
+
+### AxisY
+
+**Location**: `src/lib/charting/pane/AxisY.tsx`
+
+Renders the value axis on the right side of each view.
+
+**Features**:
+
+- Auto-scaled tick values
+- Normalization display (x 10^n)
+- Grid line coordination
+
+### Title
+
+**Location**: `src/lib/charting/pane/Title.tsx`
+
+Displays chart title and indicator values at cursor position.
+
+### Spacing
+
+**Location**: `src/lib/charting/pane/Spacing.tsx`
+
+Provides spacing between chart elements.
+
+### Help
+
+**Location**: `src/lib/charting/pane/Help.tsx`
+
+Displays keyboard shortcuts and help information.
+
+### Screenshot
+
+**Location**: `src/lib/charting/pane/Screenshot.tsx`
+
+Handles chart screenshot generation using html2canvas.
+
+## Layer 5: Drawings
+
+Drawing components enable interactive chart annotations.
+
+**Location**: `src/lib/charting/drawing/`
+
+### Drawing (Base)
+
+**Location**: `src/lib/charting/drawing/Drawing.tsx`
+
+```typescript
+export type TPoint = {
+    x: number,
+    y: number,
+    time: number,
+    value: number
+}
+
+export abstract class Drawing<P, S> extends Component<P, S> {
+    id: string;
+    points: TPoint[] = [];
+    
+    abstract render(): JSX.Element;
+    
+    // Hit testing for selection
+    containsPoint(x: number, y: number): boolean;
+    
+    // Render control handles
+    renderHandles(): JSX.Element[];
+}
+```
+
+### Available Drawings
+
+- **LineDrawing**: Trend lines
+- **ParallelDrawing**: Parallel channels
+- **FibonacciRetraceDrawing**: Fibonacci retracement levels
+- **FibonacciTimeZoneDrawing**: Fibonacci time zones
+- **GannAnglesDrawing**: Gann fan lines
+- **PloylineDrawing**: Multi-segment lines
+
+**Drawing Factory**:
+
+```typescript
+// src/lib/charting/drawing/Drawings.ts
+export function createDrawing(
+    id: string, 
+    xc: ChartXControl, 
+    yc: ChartYControl
+): Drawing {
+    if (id.includes('line')) return new LineDrawing(...);
+    if (id.includes('fibonacci')) return new FibonacciRetraceDrawing(...);
+    // ... more drawing types
+}
+```
+
+## Controls
+
+### ChartXControl
+
+**Location**: `src/lib/charting/view/ChartXControl.ts`
+
+Manages X-axis (time) coordinate transformations.
+
+**Key Properties**:
+
+```typescript
+class ChartXControl {
+    baseSer: TSer;              // Base time series
+    width: number;              // Canvas width
+    
+    rightSideRow: number;       // Rightmost visible row
+    referCursorRow: number;     // Reference cursor position
+    wBar: number;               // Bar width in pixels
+    nBars: number;              // Number of visible bars
+    klineKind: KlineKind;       // Candle/bar/line
+    
+    isOnCalendarMode: boolean;  // Calendar vs occurred mode
+}
+```
+
+**Coordinate Methods**: See [Architecture](/dev-guide/architecture) (Coordinate System section).
+
+### ChartYControl
+
+**Location**: `src/lib/charting/view/ChartYControl.ts`
+
+Manages Y-axis (value) coordinate transformations.
+
+**Key Properties**:
+
+```typescript
+class ChartYControl {
+    baseSer: TSer;
+    height: number;
+    
+    valueScalar: Scalar;  // LINEAR_SCALAR, LG_SCALAR, LN_SCALAR
+    
+    // Computed geometry
+    hChart: number;       // Chart height
+    hOne: number;         // Pixels per 1.0 value
+    maxValue: number;
+    minValue: number;
+}
+```
+
+**Value Scaling**:
+
+```typescript
+// Value to Y-coordinate
+yv(value: number): number {
+    const scalarValue = this.valueScalar.doScale(value)
+    return -((this.hOne * (scalarValue - this.minScalarValue) 
+              - this.yChartLower));
+}
+
+// Y-coordinate to value
+vy(y: number): number {
+    const scalarValue = -((y - this.yChartLower) / this.hOne 
+                          - this.minScalarValue);
+    return this.valueScalar.unScale(scalarValue);
+}
+```
+
+## Update Flow
+
+When user interacts with the chart:
+
+1. **Event Capture**: Mouse/keyboard events captured by view
+2. **Control Update**: `ChartXControl` or `ChartYControl` state changes
+3. **Event Propagation**: `UpdateEvent` sent to all views
+4. **Geometry Recomputation**: Views call `computeGeometry()`
+5. **Plot Regeneration**: `plot()` creates new JSX elements
+6. **State Update**: `setState()` triggers React re-render
+7. **SVG Rendering**: React reconciles and updates DOM
+
+```typescript
+// UpdateEvent dispatched from KlineViewContainer
+type UpdateEvent = {
+    type: 'chart' | 'cursors' | 'drawing'
+    changed?: number,
+    xyMouse?: { who: string, x: number, y: number }
+    deltaMouse?: { dx: number, dy: number }
+    yScalar?: boolean
+}
+```
+
+## Best Practices
+
+### Creating Custom Views
+
+1. Extend `ChartView<ViewProps, ViewState>`
+2. Implement required abstract methods
+3. Initialize `yc` in constructor
+4. Call `computeGeometry()` before plotting
+5. Return plot elements from `plot()`
+
+### Creating Custom Plots
+
+1. Use SVG primitives (`<path>`, `<rect>`, `<circle>`, etc.)
+2. Iterate only over visible bars (`xc.nBars`)
+3. Use `xc` methods for time-to-x conversion
+4. Use `yc.yv()` for value-to-y conversion
+5. Apply proper z-ordering with `depth` prop
+
+### Performance Tips
+
+- Limit rendering to visible range using `xc.nBars`
+- Memoize expensive calculations
+- Use `React.Fragment` to avoid extra DOM nodes
+- Batch state updates when possible
+- Avoid creating new objects in render methods
+
+## Next Steps
+
+- Learn about the [Time Series System](/dev-guide/time-series)
+- Review the [Architecture Overview](/dev-guide/architecture)
+- Explore the source code in `src/lib/charting/`

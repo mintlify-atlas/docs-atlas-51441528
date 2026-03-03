@@ -1,0 +1,716 @@
+---
+title: "Time Series System"
+description: "Understanding TSer, TFrame, TVar, and TStamps in VibeTrader"
+---
+
+## Overview
+
+VibeTrader's time series system provides a robust foundation for managing temporal financial data. The system handles time-indexed data with support for different timeframes, timezones, and both calendar and occurred modes.
+
+**Location**: `src/lib/timeseris/`
+
+## Core Concepts
+
+### Time Representation
+
+All times are represented as **milliseconds since epoch** (January 1, 1970 00:00 UTC).
+
+The system distinguishes between:
+
+- **Calendar Mode**: Regular time intervals (includes gaps like weekends)
+- **Occurred Mode**: Only times when data exists (compact, no gaps)
+
+## TSer Interface
+
+The central interface for time series data management.
+
+**Location**: `src/lib/timeseris/TSer.ts`
+
+```typescript
+export interface TSer {
+    timeframe: TFrame;
+    timezone: string;  // IANA timezone (e.g., "America/New_York")
+    
+    timestamps(): TStamps;
+    vars(): Map<string, TVar<unknown>>;
+    
+    varOf(name: string): TVar<unknown>;  // Get or create variable
+    addVar(name: string, v: TVar<unknown>): void;
+    
+    valuesCapacity: number;
+    isLoaded: boolean;
+    isInLoading: boolean;
+    
+    // Time occurrence checks
+    occurred(time: number): boolean;
+    firstOccurredTime(): number;
+    lastOccurredTime(): number;
+    indexOfOccurredTime(time: number): number;
+    
+    // Data manipulation
+    createOrReset(time: number): void;
+    addToVar(name: string, value: TVal): TSer;
+    addAllToVar(name: string, values: TVal[]): TSer;
+    clear(fromTime: number): void;
+    
+    size(): number;
+    
+    // Row/time conversion
+    indexOfTime(time: number): number;
+    timeOfIndex(idx: number): number;
+    timeOfRow(row: number): number;
+    rowOfTime(time: number): number;
+    lastOccurredRow(): number;
+    
+    // Calendar mode toggle
+    isOnCalendarMode: boolean;
+    toOnCalendarMode(): void;
+    toOnOccurredMode(): void;
+    
+    shortName: string;
+    longName: string;
+    displayName: string;
+}
+```
+
+## DefaultTSer Implementation
+
+The default time series implementation.
+
+**Location**: `src/lib/timeseris/DefaultTSer.ts`
+
+```typescript
+export class DefaultTSer implements TSer {
+    timeframe: TFrame;
+    timezone: string;
+    valuesCapacity: number;
+    
+    protected _timestamps: TStamps;
+    protected _vars: Map<string, TVar<unknown>>;
+    protected _holders: ValueList<boolean>;
+    
+    constructor(tframe: TFrame, tzone: string, valuesCapacity: number) {
+        this.timeframe = tframe;
+        this.timezone = tzone;
+        this.valuesCapacity = valuesCapacity;
+        
+        this._vars = new Map<string, TVar<unknown>>();
+        this._timestamps = TStamps.of(tframe, tzone, valuesCapacity);
+        this._holders = new ValueList(valuesCapacity);
+    }
+    
+    // Create a new TVar for this series
+    TVar(name: string, kind: TVar.Kind): TVar<unknown> {
+        return new TVar(this, name, kind);
+    }
+    
+    // Get existing var or create new one
+    varOf(name: string): TVar<unknown> {
+        let tvar = this._vars.get(name);
+        if (tvar === undefined) {
+            tvar = this.TVar(name, TVar.Kind.Accumlate);
+        }
+        return tvar;
+    }
+}
+```
+
+### Capacity Planning
+
+The `valuesCapacity` parameter determines maximum data points:
+
+- **1-minute trading data**: 15,000 capacity = ~62.5 days (3 months)
+- **Daily data**: 15,000 capacity = 60 years
+- **1-minute calendar**: 20,160 capacity = 14 days (2 weeks)
+- **Daily calendar**: 20,160 capacity = 55 years
+
+## TFrame (Timeframe)
+
+Represents a time interval combining a unit and multiplier.
+
+**Location**: `src/lib/timeseris/TFrame.ts`
+
+```typescript
+export class TFrame {
+    readonly unit: TUnit;
+    readonly nUnits: number;
+    readonly interval: number;  // milliseconds
+    
+    readonly name: string;       // "5 Minutes", "Daily", etc.
+    readonly shortName: string;  // "5m", "1D", etc.
+    readonly compactName: string;
+    
+    constructor(
+        public readonly unit: TUnit = TUnit.Day,
+        public readonly nUnits: number = 1,
+    ) {
+        this.interval = unit.interval * nUnits;
+        this.shortName = nUnits + unit.shortName;
+        this.compactName = nUnits + unit.compactName;
+        // ... name initialization
+    }
+}
+```
+
+### Predefined Timeframes
+
+```typescript
+static readonly ONE_SEC = new TFrame(TUnit.Second, 1);
+static readonly ONE_MIN = new TFrame(TUnit.Minute, 1);
+static readonly THREE_MINS = new TFrame(TUnit.Minute, 3);
+static readonly FIVE_MINS = new TFrame(TUnit.Minute, 5);
+static readonly FIFTEEN_MINS = new TFrame(TUnit.Minute, 15);
+static readonly THIRTY_MINS = new TFrame(TUnit.Minute, 30);
+static readonly ONE_HOUR = new TFrame(TUnit.Hour, 1);
+static readonly TWO_HOUR = new TFrame(TUnit.Hour, 2);
+static readonly FOUR_HOUR = new TFrame(TUnit.Hour, 4);
+static readonly DAILY = new TFrame(TUnit.Day, 1);
+static readonly WEEKLY = new TFrame(TUnit.Week, 1);
+static readonly MONTHLY = new TFrame(TUnit.Month, 1);
+static readonly ONE_YEAR = new TFrame(TUnit.Year, 1);
+```
+
+### Creating Timeframes
+
+```typescript
+// From short name
+const tf1 = TFrame.ofName("5m");   // 5 minutes
+const tf2 = TFrame.ofName("1D");   // 1 day
+const tf3 = TFrame.ofName("3mo");  // 3 months
+
+// Programmatically
+const tf4 = TFrame.of(TUnit.Hour, 4);  // 4 hours
+const tf5 = new TFrame(TUnit.Day, 1);  // 1 day
+```
+
+### Time Calculations
+
+```typescript
+const tf = TFrame.FIVE_MINS;
+const tzone = "America/New_York";
+const now = Date.now();
+
+// Next/previous timeframe
+const next = tf.nextTime(now, tzone);
+const prev = tf.prevTime(now, tzone);
+
+// Time arithmetic
+const future = tf.timeAfterNTimeframes(now, 10, tzone);  // 10 periods ahead
+const past = tf.timeBeforeNTimeframes(now, 5, tzone);    // 5 periods back
+
+// Count periods between times
+const nPeriods = tf.nTimeframesBetween(past, future, tzone);
+
+// Round time to timeframe boundary
+const truncated = tf.trunc(now, tzone);  // Round down
+const ceiling = tf.ceil(now, tzone);     // Round up
+
+// Check if two times are in same interval
+const same = tf.sameInterval(time1, time2, tzone);
+```
+
+## TUnit (Time Unit)
+
+Defines the base time units.
+
+**Location**: `src/lib/timeseris/TUnit.ts`
+
+```typescript
+export class TUnit {
+    static readonly ONE_SECOND = 1000;
+    static readonly ONE_MINUTE = 60 * 1000;
+    static readonly ONE_HOUR = 60 * 60 * 1000;
+    static readonly ONE_DAY = 24 * 60 * 60 * 1000;
+    static readonly ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+    static readonly ONE_MONTH = 30 * 24 * 60 * 60 * 1000;
+    static readonly ONE_YEAR = Math.floor(365.24 * 24 * 60 * 60 * 1000);
+    
+    static readonly Second = new TUnit(ONE_SECOND, "Second", "s", "Sec", "Second");
+    static readonly Minute = new TUnit(ONE_MINUTE, "Minute", "m", "Min", "Minute");
+    static readonly Hour = new TUnit(ONE_HOUR, "Hour", "h", "Hour", "Hourly");
+    static readonly Day = new TUnit(ONE_DAY, "Day", "D", "Day", "Daily");
+    static readonly Week = new TUnit(ONE_WEEK, "Week", "W", "Week", "Weekly");
+    static readonly Month = new TUnit(ONE_MONTH, "Month", "M", "Month", "Monthly");
+    static readonly Year = new TUnit(ONE_YEAR, "Year", "Y", "Year", "Yearly");
+}
+```
+
+TUnit provides timezone-aware arithmetic using the **Temporal API** polyfill.
+
+## TVar (Time Variable)
+
+A horizontal view of time series data - represents a single variable over time.
+
+**Location**: `src/lib/timeseris/TVar.ts`
+
+```typescript
+export class TVar<V> {
+    belongsTo: TSer;
+    readonly name: string;
+    readonly kind?: TVar.Kind;
+    
+    private values: ValueList<V>;
+    
+    constructor(belongsTo: TSer, name: string, kind: TVar.Kind) {
+        this.belongsTo = belongsTo;
+        this.kind = kind;
+        this.name = name;
+        this.values = new ValueList<V>(this.belongsTo.valuesCapacity);
+        belongsTo.addVar(name, this);
+    }
+    
+    values(): ValueList<V> {
+        return this.values;
+    }
+    
+    timestamps(): TStamps {
+        return this.belongsTo.timestamps();
+    }
+}
+```
+
+### TVar Kinds
+
+```typescript
+export enum Kind {
+    Open,        // Opening price
+    High,        // High price
+    Low,         // Low price
+    Close,       // Closing price
+    Accumlate,   // Accumulated value (volume, etc.)
+}
+```
+
+### Data Access
+
+```typescript
+const tvar = new TVar<number>(ser, "close", TVar.Kind.Close);
+
+// Access by time
+const value = tvar.getByTime(timestamp);
+tvar.setByTime(timestamp, 100.5);
+tvar.insertAtTime(timestamp, 100.5);
+
+// Access by index
+const value2 = tvar.getByIndex(0);
+tvar.setByIndex(0, 101.0);
+tvar.insertAtIndex(0, 101.0);
+
+// Add to end
+tvar.add(102.0);
+
+// Get all values
+const values = tvar.toArray();  // V[]
+
+// Get values with times
+const withTime = tvar.toArrayWithTime();  // { times: number[], values: V[] }
+
+// Get slice
+const slice = tvar.slice(fromTime, toTime);  // V[]
+const sliceWithTime = tvar.sliceWithTime(fromTime, toTime);
+
+// Size
+const count = tvar.size();
+
+// Iteration
+for (const value of tvar) {
+    console.log(value);
+}
+```
+
+### Example: OHLCV Data
+
+```typescript
+const ser = new DefaultTSer(TFrame.FIVE_MINS, "America/New_York", 1000);
+
+const open = ser.TVar("open", TVar.Kind.Open);
+const high = ser.TVar("high", TVar.Kind.High);
+const low = ser.TVar("low", TVar.Kind.Low);
+const close = ser.TVar("close", TVar.Kind.Close);
+const volume = ser.TVar("volume", TVar.Kind.Accumlate);
+
+// Or use Kline wrapper
+const kline = new Kline(time, 100, 105, 99, 103, 1000, openTime, closeTime, true);
+const kvar = ser.TVar("kline", TVar.Kind.Close) as TVar<Kline>;
+kvar.add(kline);
+```
+
+## TStamps (Timestamps)
+
+Manages the time axis of a time series.
+
+**Location**: `src/lib/timeseris/TStamps.ts`
+
+```typescript
+export abstract class TStamps extends ValueList<number> {
+    timeframe: TFrame;
+    timezone: string;
+    
+    constructor(tframe: TFrame, tzone: string, capacity: number) {
+        super(capacity);
+        this.timeframe = tframe;
+        this.timezone = tzone;
+    }
+    
+    abstract isOnCalendar(): boolean;
+    abstract asOnCalendar(): TStamps;
+    
+    // Row/time conversion
+    abstract rowOfTime(time: number): number;
+    abstract timeOfRow(row: number): number;
+    abstract lastRow(): number;
+    
+    // Occurred time lookups
+    abstract indexOfOccurredTime(time: number): number;
+    abstract nearestIndexOfOccurredTime(time: number): number;
+    abstract indexOrNextIndexOfOccurredTime(time: number): number;
+    abstract indexOrPrevIndexOfOccurredTime(time: number): number;
+    
+    abstract firstOccurredTime(): number;
+    abstract lastOccurredTime(): number;
+    
+    abstract timeIterator(): TStampsIterator;
+    abstract timeIterator(fromTime: number, toTime: number): TStampsIterator;
+}
+```
+
+### TStampsOnOccurred
+
+Compact mode - only stores times when data exists.
+
+```typescript
+export class TStampsOnOccurred extends TStamps {
+    isOnCalendar(): boolean {
+        return false;
+    }
+    
+    // Get row for any time (extends beyond data)
+    rowOfTime(time: number): number {
+        const lastOccurredIdx = this.size() - 1;
+        if (lastOccurredIdx === -1) return -1;
+        
+        const firstOccurredTime = this.get(0);
+        const lastOccurredTime = this.get(lastOccurredIdx);
+        
+        if (time <= firstOccurredTime) {
+            return this.timeframe.nTimeframesBetween(
+                firstOccurredTime, time, this.timezone
+            );
+        } else if (time >= lastOccurredTime) {
+            return lastOccurredIdx + this.timeframe.nTimeframesBetween(
+                lastOccurredTime, time, this.timezone
+            );
+        } else {
+            return this.nearestIndexOfOccurredTime(time);
+        }
+    }
+    
+    // Efficient time lookup
+    timeOfRow(row: number): number {
+        const lastOccurredIdx = this.size() - 1;
+        if (lastOccurredIdx < 0) return 0;
+        
+        const firstOccurredTime = this.get(0);
+        const lastOccurredTime = this.get(lastOccurredIdx);
+        
+        if (row < 0) {
+            return this.timeframe.timeAfterNTimeframes(
+                firstOccurredTime, row, this.timezone
+            );
+        } else if (row > lastOccurredIdx) {
+            return this.timeframe.timeAfterNTimeframes(
+                lastOccurredTime, row - lastOccurredIdx, this.timezone
+            );
+        } else {
+            return this.get(row);
+        }
+    }
+    
+    // Binary search for exact match
+    indexOfOccurredTime(time: number): number {
+        // ... binary search implementation
+    }
+}
+```
+
+### TStampsOnCalendar
+
+Calendar mode - includes all time intervals (even without data).
+
+```typescript
+export class TStampsOnCalendar extends TStamps {
+    private delegateTimestamps: TStamps;
+    
+    isOnCalendar(): boolean {
+        return true;
+    }
+    
+    // Regular time intervals from first occurred time
+    rowOfTime(time: number): number {
+        const lastOccurredIdx = this.size() - 1;
+        if (lastOccurredIdx === -1) return -1;
+        
+        const firstOccurredTime = this.get(0);
+        return this.timeframe.nTimeframesBetween(
+            firstOccurredTime, time, this.timezone
+        );
+    }
+    
+    timeOfRow(row: number): number {
+        const lastOccurredIdx = this.size() - 1;
+        if (lastOccurredIdx < 0) return 0;
+        
+        const firstOccurredTime = this.get(0);
+        return this.timeframe.timeAfterNTimeframes(
+            firstOccurredTime, row, this.timezone
+        );
+    }
+}
+```
+
+### Time Lookups
+
+```typescript
+const stamps = ser.timestamps();
+
+// Find exact index (returns -1 if not found)
+const idx = stamps.indexOfOccurredTime(timestamp);
+
+// Find nearest index
+const nearest = stamps.nearestIndexOfOccurredTime(timestamp);
+
+// Find next index >= time
+const next = stamps.indexOrNextIndexOfOccurredTime(timestamp);
+
+// Find previous index <= time
+const prev = stamps.indexOrPrevIndexOfOccurredTime(timestamp);
+
+// Get time range
+const first = stamps.firstOccurredTime();
+const last = stamps.lastOccurredTime();
+
+// Convert row <-> time
+const row = stamps.rowOfTime(timestamp);
+const time = stamps.timeOfRow(row);
+```
+
+### Iteration
+
+```typescript
+// Iterate all timestamps
+const iter = stamps.timeIterator();
+while (iter.hasNext()) {
+    const time = iter.next();
+    console.log(time);
+}
+
+// Iterate time range
+const iter2 = stamps.timeIterator(fromTime, toTime);
+
+// Bidirectional iteration
+if (iter2.hasPrev()) {
+    const prevTime = iter2.prev();
+}
+```
+
+## TVal (Time Value)
+
+Base class for time-indexed values.
+
+**Location**: `src/lib/timeseris/TVal.ts`
+
+```typescript
+export class TVal {
+    time: number;
+    
+    get value(): number {
+        return 0;
+    }
+}
+```
+
+Extended by domain models like `Kline`.
+
+## Usage Examples
+
+### Creating a Time Series
+
+```typescript
+import { DefaultTSer } from './lib/timeseris/DefaultTSer';
+import { TFrame } from './lib/timeseris/TFrame';
+import { TVar } from './lib/timeseris/TVar';
+
+// Create 5-minute series for New York timezone
+const ser = new DefaultTSer(
+    TFrame.FIVE_MINS,
+    "America/New_York",
+    1000  // capacity
+);
+
+// Create variables
+const close = ser.TVar("close", TVar.Kind.Close);
+const volume = ser.TVar("volume", TVar.Kind.Accumlate);
+
+// Add data
+ser.createOrReset(timestamp1);
+close.add(100.5);
+volume.add(1000);
+
+ser.createOrReset(timestamp2);
+close.add(101.2);
+volume.add(1500);
+```
+
+### Working with Kline Data
+
+```typescript
+import { Kline, KVAR_NAME } from './lib/domain/Kline';
+
+const kvar = ser.TVar(KVAR_NAME, TVar.Kind.Close) as TVar<Kline>;
+
+const kline = new Kline(
+    time,
+    100,    // open
+    105,    // high
+    99,     // low
+    103,    // close
+    1000,   // volume
+    openTime,
+    closeTime,
+    true    // isClosed
+);
+
+kvar.add(kline);
+
+// Access later
+const k = kvar.getByTime(time);
+console.log(k.close);  // 103
+```
+
+### Calendar vs Occurred Mode
+
+```typescript
+// Start in occurred mode (compact)
+console.log(ser.isOnCalendarMode);  // false
+
+// Switch to calendar mode (includes gaps)
+ser.toOnCalendarMode();
+
+// Row calculations now include all intervals
+const row = ser.rowOfTime(someTime);  // Includes weekends, etc.
+
+// Switch back
+ser.toOnOccurredMode();
+```
+
+### Time Series Slicing
+
+```typescript
+const close = ser.varOf("close") as TVar<number>;
+
+// Get data for specific time range
+const values = close.slice(startTime, endTime);
+
+// Get with timestamps
+const { times, values: vals } = close.sliceWithTime(startTime, endTime);
+
+for (let i = 0; i < times.length; i++) {
+    console.log(`${times[i]}: ${vals[i]}`);
+}
+```
+
+### Indicator Calculation
+
+```typescript
+// Simple moving average
+function sma(tvar: TVar<number>, period: number): TVar<number> {
+    const result = tvar.belongsTo.TVar(`sma_${period}`, TVar.Kind.Accumlate) as TVar<number>;
+    
+    for (let i = 0; i < tvar.size(); i++) {
+        if (i < period - 1) {
+            result.add(undefined);
+        } else {
+            let sum = 0;
+            for (let j = 0; j < period; j++) {
+                sum += tvar.getByIndex(i - j) as number;
+            }
+            result.add(sum / period);
+        }
+    }
+    
+    return result;
+}
+
+const close = ser.varOf("close") as TVar<number>;
+const sma20 = sma(close, 20);
+```
+
+## Performance Considerations
+
+### Binary Search
+
+Timestamp lookups use binary search for O(log n) performance:
+
+```typescript
+indexOfOccurredTime(time: number): number {
+    let from = 0;
+    let to = this.size() - 1;
+    let length = to - from;
+    
+    while (length > 1) {
+        length = Math.floor(length / 2);
+        const midTime = this.get(from + length);
+        
+        if (time > midTime) {
+            from += length;
+        } else if (time < midTime) {
+            to -= length;
+        } else {
+            return from + length;
+        }
+        
+        length = to - from;
+    }
+    
+    // Check final two positions
+    if (time === this.get(from)) return from;
+    if (time === this.get(from + 1)) return from + 1;
+    return -1;
+}
+```
+
+### ValueList Efficiency
+
+`ValueList<T>` uses typed arrays internally for numeric types, providing:
+
+- Contiguous memory layout
+- Cache-friendly access patterns
+- Minimal garbage collection overhead
+
+### Capacity Management
+
+Choose appropriate capacity to avoid resizing:
+
+```typescript
+// For intraday 5m data (3 months)
+const capacity = 3 * 30 * 24 * 12;  // ~25,920
+
+// For daily data (10 years)
+const capacity = 10 * 365;  // ~3,650
+```
+
+## Best Practices
+
+1. **Always use TFrame methods** for time arithmetic (handles timezone correctly)
+2. **Choose appropriate capacity** to avoid resizing
+3. **Use occurred mode** for compact storage of sparse data
+4. **Use calendar mode** when you need regular intervals
+5. **Binary search methods** are fast - use them instead of linear scans
+6. **Create TVars once** and reuse - don't recreate on every access
+7. **Batch data additions** using `addAllToVar()` when possible
+
+## Next Steps
+
+- Learn about [Component Hierarchy](/dev-guide/components) to see how TSer is used in views
+- Review [Architecture Overview](/dev-guide/architecture) for the big picture
+- Explore the source code in `src/lib/timeseris/`

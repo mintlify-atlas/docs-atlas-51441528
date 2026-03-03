@@ -1,0 +1,576 @@
+---
+title: 'Plot Types'
+description: 'API reference for all plot type components including PlotLine, PlotKline, PlotHistogram, and more'
+---
+
+## PlotLine
+
+Renders a line chart by connecting data points with straight lines.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable containing the data
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the plot
+</ParamField>
+
+<ParamField path="atIndex" type="number" required>
+  Index of the data in the PineData array to plot
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Plot styling options including color, linewidth, fillgaps, etc.
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Example
+
+```tsx
+import PlotLine from './lib/charting/plot/PlotLine';
+
+<PlotLine
+  tvar={indicatorVar}
+  name="EMA 20"
+  options={{ color: '#2962FF', linewidth: 2, fillgaps: true }}
+  atIndex={0}
+  xc={xc}
+  yc={yc}
+  depth={1}
+/>
+```
+
+### Notes
+
+- Gaps in data are handled based on `options.fillgaps`
+- When `fillgaps` is true, connects across missing values
+- When `fillgaps` is false, creates separate line segments
+
+Source: `PlotLine.tsx:18-86`
+
+---
+
+## PlotKline
+
+Renders candlestick, bar, or line charts for OHLC (Open-High-Low-Close) data.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="kvar" type="TVar<Kline>" required>
+  Time series variable containing kline/candlestick data
+</ParamField>
+
+<ParamField path="kind" type="KlineKind" required>
+  Chart style: `'candle'`, `'bar'`, or `'line'`
+</ParamField>
+
+<ParamField path="depth" type="number" required>
+  Z-index depth for layering
+</ParamField>
+
+### KlineKind Types
+
+<ResponseField name="candle" type="string">
+  Traditional candlestick chart with hollow/filled rectangles
+</ResponseField>
+
+<ResponseField name="bar" type="string">
+  OHLC bar chart with horizontal ticks
+</ResponseField>
+
+<ResponseField name="line" type="string">
+  Line chart connecting close prices
+</ResponseField>
+
+### Example
+
+```tsx
+import PlotKline from './lib/charting/plot/PlotKline';
+
+<PlotKline
+  kvar={klineVar}
+  xc={xc}
+  yc={yc}
+  kind="candle"
+  depth={0}
+/>
+```
+
+### Rendering Details
+
+**Candle Style**: Renders rectangles for the body (open to close) with wicks extending to high/low. Positive candles (close > open) and negative candles (close < open) use different CSS classes.
+
+**Bar Style**: Renders vertical lines from high to low with horizontal ticks for open (left) and close (right).
+
+**Line Style**: Connects the close prices with a continuous line, showing min/max range when bars are compressed.
+
+Source: `PlotKline.tsx:17-233`
+
+---
+
+## PlotHistogram
+
+Renders vertical bars from zero to the data value, commonly used for volume or oscillator indicators.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable containing the data
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the plot
+</ParamField>
+
+<ParamField path="atIndex" type="number" required>
+  Index of the data in the PineData array to plot
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Plot styling options (color can be dynamic per bar)
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Example
+
+```tsx
+import PlotHistogram from './lib/charting/plot/PlotHistogram';
+
+<PlotHistogram
+  tvar={macdVar}
+  xc={xc}
+  yc={yc}
+  depth={0}
+  options={{ color: '#26a69a' }}
+  name="MACD Histogram"
+  atIndex={2}
+/>
+```
+
+### Dynamic Coloring
+
+Histogram bars can have different colors based on the data. The color is read from `data.options.color` if available, allowing per-bar color customization.
+
+Source: `PlotHistogram.tsx:19-82`
+
+---
+
+## PlotHline
+
+Renders a horizontal line at a constant value across the chart.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable (value is read from first available bar)
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the horizontal line
+</ParamField>
+
+<ParamField path="atIndex" type="number" required>
+  Index of the data in the PineData array
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Plot options including color and linestyle
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Line Styles
+
+<ResponseField name="solid" type="string">
+  Solid continuous line (default)
+</ResponseField>
+
+<ResponseField name="dashed" type="string">
+  Dashed line with 4-3 pattern
+</ResponseField>
+
+<ResponseField name="dotted" type="string">
+  Dotted line with 1-2 pattern
+</ResponseField>
+
+### Example
+
+```tsx
+import PlotHline from './lib/charting/plot/PlotHline';
+
+<PlotHline
+  tvar={indicatorVar}
+  xc={xc}
+  yc={yc}
+  depth={0}
+  options={{ color: '#787B86', linestyle: 'dashed' }}
+  name="Overbought"
+  atIndex={0}
+/>
+```
+
+Source: `PlotHline.tsx:19-74`
+
+---
+
+## PlotShape
+
+Renders various shapes and markers at specific chart locations (above/below bars, top/bottom).
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable with boolean values indicating when to show shapes
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the plot
+</ParamField>
+
+<ParamField path="atIndex" type="number" required>
+  Index of the data in the PineData array
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Options including color, shape, location, and optional text
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Shape Types
+
+<ResponseField name="xcross" type="string">
+  X-shaped cross marker
+</ResponseField>
+
+<ResponseField name="cross" type="string">
+  Plus-shaped cross marker
+</ResponseField>
+
+<ResponseField name="circle" type="string">
+  Filled circle
+</ResponseField>
+
+<ResponseField name="triangleup" type="string">
+  Upward-pointing triangle
+</ResponseField>
+
+<ResponseField name="triangledown" type="string">
+  Downward-pointing triangle
+</ResponseField>
+
+<ResponseField name="arrowup" type="string">
+  Upward-pointing arrow
+</ResponseField>
+
+<ResponseField name="arrowdown" type="string">
+  Downward-pointing arrow
+</ResponseField>
+
+<ResponseField name="labelup" type="string">
+  Label with upward-pointing arrow, supports text
+</ResponseField>
+
+<ResponseField name="labeldown" type="string">
+  Label with downward-pointing arrow, supports text
+</ResponseField>
+
+<ResponseField name="flag" type="string">
+  Flag shape
+</ResponseField>
+
+<ResponseField name="square" type="string">
+  Filled square
+</ResponseField>
+
+<ResponseField name="diamond" type="string">
+  Filled diamond
+</ResponseField>
+
+### Location Types
+
+<ResponseField name="abovebar" type="string">
+  Above the bar's high price
+</ResponseField>
+
+<ResponseField name="belowbar" type="string">
+  Below the bar's low price
+</ResponseField>
+
+<ResponseField name="top" type="string">
+  Top of the chart pane
+</ResponseField>
+
+<ResponseField name="bottom" type="string">
+  Bottom of the chart pane
+</ResponseField>
+
+### Example
+
+```tsx
+import PlotShape from './lib/charting/plot/PlotShape';
+
+<PlotShape
+  tvar={signalVar}
+  xc={xc}
+  yc={yc}
+  depth={0}
+  options={{
+    color: '#26a69a',
+    style: 'shape',
+    shape: 'labelup',
+    location: 'belowbar',
+    text: 'BUY'
+  }}
+  name="Buy Signal"
+  atIndex={0}
+/>
+```
+
+Source: `PlotShape.tsx:23-314`
+
+---
+
+## PlotFill
+
+Fills the area between two plot lines with a solid color.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable containing both plots to fill between
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the fill
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Options including plot1, plot2 (indices), color, and fillgaps
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Required Options
+
+<ParamField path="options.plot1" type="number" required>
+  Index of the first plot to fill from
+</ParamField>
+
+<ParamField path="options.plot2" type="number" required>
+  Index of the second plot to fill to
+</ParamField>
+
+<ParamField path="options.color" type="string" required>
+  Fill color
+</ParamField>
+
+### Example
+
+```tsx
+import PlotFill from './lib/charting/plot/PlotFill';
+
+<PlotFill
+  tvar={indicatorVar}
+  xc={xc}
+  yc={yc}
+  depth={0}
+  options={{
+    plot1: 0,  // First EMA
+    plot2: 1,  // Second EMA
+    color: 'rgba(41, 98, 255, 0.1)',
+    fillgaps: true
+  }}
+  name="EMA Fill"
+/>
+```
+
+Source: `PlotFill.tsx:18-129`
+
+---
+
+## PlotBgcolor
+
+Colors the background of individual bars/candles based on data values.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable containing color data
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the background plot
+</ParamField>
+
+<ParamField path="atIndex" type="number" required>
+  Index of the data in the PineData array
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Plot options (color is read from data)
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Example
+
+```tsx
+import PlotBgcolor from './lib/charting/plot/PlotBgcolor';
+
+<PlotBgcolor
+  tvar={indicatorVar}
+  xc={xc}
+  yc={yc}
+  depth={0}
+  atIndex={0}
+  options={{}}
+  name="Trend Background"
+/>
+```
+
+### Notes
+
+- Color is dynamically read from `data.options.color` for each bar
+- Creates rectangular backgrounds spanning the full chart height
+- Useful for highlighting market conditions or trends
+
+Source: `PlotBgcolor.tsx:20-58`
+
+---
+
+## PlotOptions Interface
+
+Common options interface used by all plot types.
+
+### Properties
+
+<ParamField path="_plotKey" type="string">
+  Internal plot identifier
+</ParamField>
+
+<ParamField path="series" type="number">
+  Series number for multi-series plots
+</ParamField>
+
+<ParamField path="title" type="string">
+  Display title for the plot
+</ParamField>
+
+<ParamField path="plot1" type="string | number">
+  First plot index (for fill operations)
+</ParamField>
+
+<ParamField path="plot2" type="string | number">
+  Second plot index (for fill operations)
+</ParamField>
+
+<ParamField path="color" type="string">
+  Plot color (hex, rgb, or named color)
+</ParamField>
+
+<ParamField path="linewidth" type="number">
+  Line thickness in pixels
+</ParamField>
+
+<ParamField path="linestyle" type="string">
+  Line style: 'solid', 'dashed', or 'dotted'
+</ParamField>
+
+<ParamField path="style" type="string">
+  Plot style: 'line', 'style_histogram', 'style_columns', 'shape', 'hline', 'fill', 'background', etc.
+</ParamField>
+
+<ParamField path="fillgaps" type="boolean">
+  Whether to connect across missing data points
+</ParamField>
+
+<ParamField path="shape" type="string">
+  Shape type for PlotShape (see Shape Types above)
+</ParamField>
+
+<ParamField path="location" type="Location">
+  Location for shapes: 'abovebar', 'belowbar', 'top', 'bottom', 'absolute'
+</ParamField>
+
+<ParamField path="text" type="string">
+  Text to display with labels
+</ParamField>
+
+<ParamField path="textcolor" type="string">
+  Color for label text
+</ParamField>
+
+Source: `Plot.ts:28-55`

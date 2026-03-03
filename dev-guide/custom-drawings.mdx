@@ -1,0 +1,490 @@
+---
+title: Custom Drawing Tools
+description: Extend VibeTrader with custom drawing and annotation tools
+---
+
+## Overview
+
+VibeTrader provides a framework for creating interactive drawing tools that users can add to charts. Custom drawings extend the base `Drawing` class and implement click-and-drag interaction patterns.
+
+## Architecture
+
+### Base Drawing Class
+
+All drawings inherit from the abstract `Drawing` class defined in `src/lib/charting/drawing/Drawing.tsx:14`:
+
+```typescript src/lib/charting/drawing/Drawing.tsx
+export abstract class Drawing {
+    xc: ChartXControl  // X-axis control (time/bar)
+    yc: ChartYControl  // Y-axis control (price/value)
+
+    constructor(xc: ChartXControl, yc: ChartYControl, points?: TPoint[]) {
+        this.xc = xc;
+        this.yc = yc;
+
+        if (points === undefined) {
+            this.init()
+        } else {
+            this.initWithPoints(points)
+        }
+    }
+
+    nHandles = 0  // Number of control points
+    readonly handles: Handle[] = [];  // Control point instances
+    currHandleIdx = 0  // Current handle being placed
+    isCompleted = false  // Drawing finished
+    isAnchored = false  // Current handle locked
+
+    abstract init(): void
+    abstract plotDrawing(): Seg[]
+    abstract hits(x: number, y: number): boolean
+}
+```
+
+### Drawing Lifecycle
+
+1. **Creation** - User selects drawing tool
+2. **Anchoring** - User clicks to place handles
+3. **Stretching** - Mouse moves to stretch current handle
+4. **Completion** - Final handle placed, drawing locked
+5. **Selection** - User can select and modify completed drawings
+
+## Creating a Custom Drawing
+
+### Simple Line Drawing
+
+The `LineDrawing` class (`src/lib/charting/drawing/LineDrawing.tsx:5`) demonstrates the basics:
+
+```typescript src/lib/charting/drawing/LineDrawing.tsx
+import { Path } from "../../svg/Path"
+import { Drawing } from "./Drawing"
+
+export class LineDrawing extends Drawing {
+    isExtended: boolean = true
+
+    override init() {
+        this.nHandles = 2;  // Line requires 2 points
+    }
+
+    override hits(x: number, y: number): boolean {
+        if (x > this.xc.wChart) {
+            return false
+        }
+
+        const x0 = this.xt(this.handles[0])
+        const x1 = this.xt(this.handles[1])
+        const y0 = this.yv(this.handles[0])
+        const y1 = this.yv(this.handles[1])
+
+        const dx = x1 - x0
+        const dy = y1 - y0
+        const k = dx === 0 ? 1 : dy / dx
+
+        const distance = this.distanceToLine(x, y, x0, y0, k)
+
+        return distance <= 4  // Hit threshold in pixels
+    }
+
+    override plotDrawing() {
+        const path = new Path()
+
+        const x0 = this.xt(this.handles[0])
+        const x1 = this.xt(this.handles[1])
+        const y0 = this.yv(this.handles[0])
+        const y1 = this.yv(this.handles[1])
+
+        if (this.isExtended) {
+            const dx = x1 - x0
+            const dy = y1 - y0
+            const k = dx === 0 ? 1 : dy / dx
+
+            this.plotLine(x0, y0, k, path)  // Extend to chart edges
+        } else {
+            path.moveto(x0, y0);
+            path.lineto(x1, y1);
+        }
+
+        return [path];
+    }
+}
+```
+
+### Key Methods
+
+<AccordionGroup>
+  <Accordion title="init()">
+    Initialize the drawing by setting `nHandles`:
+    
+    ```typescript
+    override init() {
+        this.nHandles = 2;  // Number of control points
+    }
+    ```
+    
+    For variable-length drawings (like polylines), leave `nHandles` undefined.
+  </Accordion>
+
+  <Accordion title="plotDrawing()">
+    Return an array of SVG segments to render:
+    
+    ```typescript
+    override plotDrawing(): Seg[] {
+        const path = new Path();
+        // Build path using handles
+        return [path];
+    }
+    ```
+    
+    Use helper methods:
+    - `this.xt(handle)` - Get X coordinate
+    - `this.yv(handle)` - Get Y coordinate
+    - `this.bt(handle)` - Get bar index
+  </Accordion>
+
+  <Accordion title="hits(x, y)">
+    Detect if mouse cursor is over the drawing:
+    
+    ```typescript
+    override hits(x: number, y: number): boolean {
+        const distance = this.distanceToLine(x, y, x0, y0, k);
+        return distance <= 4;  // Pixel threshold
+    }
+    ```
+    
+    Used for selection and hover interactions.
+  </Accordion>
+</AccordionGroup>
+
+## Handle Management
+
+### TPoint Type
+
+Handles store points in time-value coordinates:
+
+```typescript src/lib/charting/drawing/Drawing.tsx:9
+export type TPoint = {
+    time: number,   // Unix timestamp
+    value: number   // Price or indicator value
+}
+```
+
+### Handle Class
+
+Handles are rendered as draggable circles:
+
+```typescript src/lib/charting/drawing/Drawing.tsx:271
+export class Handle {
+    point: TPoint
+
+    private xc: ChartXControl
+    private yc: ChartYControl
+
+    hits(x: number, y: number): boolean {
+        const [x0, y0] = this.xyLocation()
+        const distance = Math.sqrt(Math.pow(x - x0, 2) + Math.pow(y - y0, 2))
+        return distance <= 8  // 8 pixel hit radius
+    }
+
+    render(key: string) {
+        const [x, y] = this.xyLocation()
+        const seg = new Circle(x, y, 5)  // 5 pixel radius circle
+        return seg.render({ key })
+    }
+}
+```
+
+### Coordinate Conversion
+
+Use these helper methods for coordinate transformation:
+
+```typescript
+// Time/Bar conversions
+this.xc.bt(time)  // time → bar index
+this.xc.tb(bar)   // bar index → time
+this.xc.xb(bar)   // bar index → x pixel
+
+// Value/Y conversions
+this.yc.yv(value) // value → y pixel
+this.yc.vy(y)     // y pixel → value
+```
+
+## Interaction Patterns
+
+### Anchoring Handles
+
+The `anchorHandle` method is called when the user clicks:
+
+```typescript src/lib/charting/drawing/Drawing.tsx:78
+anchorHandle(point: TPoint): boolean {
+    if (this.handles.length === 0) {
+        // Create all handles on first anchor
+        let i = 0
+        while (i < this.nHandles) {
+            this.handles.push(this.newHandle())
+            i++;
+        }
+    }
+
+    this.handles[this.currHandleIdx].point = point
+
+    // Fill remaining handles with same point for stretching
+    let i = this.currHandleIdx + 1
+    while (i < this.handles.length) {
+        this.handles[i].point = point
+        i++
+    }
+
+    if (this.currHandleIdx < this.nHandles - 1) {
+        this.currHandleIdx++  // Move to next handle
+    } else {
+        this.isCompleted = true  // Drawing finished
+        this.currHandleIdx = -1
+    }
+
+    return this.isCompleted;
+}
+```
+
+### Stretching During Creation
+
+```typescript src/lib/charting/drawing/Drawing.tsx:131
+stretchCurrentHandle(point: TPoint) {
+    this.handles[this.currHandleIdx].point = point
+
+    // Update all following handles to stretch together
+    let i = this.currHandleIdx + 1
+    while (i < this.handles.length) {
+        this.handles[i].point = point
+        i++
+    }
+
+    return this.renderDrawingWithHandles("drawing-stretching")
+}
+```
+
+### Dragging Completed Drawings
+
+```typescript src/lib/charting/drawing/Drawing.tsx:158
+dragDrawing(point: TPoint) {
+    const bMoved = this.xc.bt(point.time) - this.xc.bt(this.#mousePressedPoint.time)
+    const vMoved = point.value - this.#mousePressedPoint.value
+
+    let i = 0
+    while (i < this.handles.length) {
+        const oldP = this.#handlesWhenMousePressed[i].point
+        const oldB = this.xc.bt(oldP.time)
+        const newB = oldB + bMoved;
+        const newTime = this.xc.tb(newB);
+        const newValue = oldP.value + vMoved
+
+        this.handles[i].point = { time: newTime, value: newValue }
+        i++
+    }
+
+    return this.renderDrawingWithHandles("drawing-moving")
+}
+```
+
+## Advanced Examples
+
+### Fibonacci Retracement
+
+Complex drawings can use multiple paths and text labels:
+
+```typescript
+export class FibonacciRetraceDrawing extends Drawing {
+    override init() {
+        this.nHandles = 2;
+    }
+
+    override plotDrawing() {
+        const segs: Seg[] = []
+        const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
+        
+        const y0 = this.yv(this.handles[0])
+        const y1 = this.yv(this.handles[1])
+        const range = y1 - y0
+        
+        levels.forEach(level => {
+            const path = new Path()
+            const y = y0 + range * level
+            
+            path.moveto(0, y)
+            path.lineto(this.xc.wChart, y)
+            
+            segs.push(path)
+        })
+        
+        return segs
+    }
+}
+```
+
+### Polyline (Variable Handles)
+
+```typescript
+export class PolylineDrawing extends Drawing {
+    override init() {
+        // Leave nHandles undefined for variable-length
+        this.nHandles = undefined;
+    }
+    
+    override plotDrawing() {
+        const path = new Path()
+        
+        if (this.handles.length > 0) {
+            const [x0, y0] = [this.xt(this.handles[0]), this.yv(this.handles[0])]
+            path.moveto(x0, y0)
+            
+            for (let i = 1; i < this.handles.length; i++) {
+                const [x, y] = [this.xt(this.handles[i]), this.yv(this.handles[i])]
+                path.lineto(x, y)
+            }
+        }
+        
+        return [path]
+    }
+}
+```
+
+## Registering Drawings
+
+Add your custom drawing to the factory function in `src/lib/charting/drawing/Drawings.ts:11`:
+
+```typescript src/lib/charting/drawing/Drawings.ts
+import { MyCustomDrawing } from "./MyCustomDrawing"
+
+export function createDrawing(id: string, xc: ChartXControl, yc: ChartYControl) {
+    switch (id) {
+        case 'fibonacci_retrace':
+            return new FibonacciRetraceDrawing(xc, yc)
+        case 'line':
+            return new LineDrawing(xc, yc)
+        case 'my_custom':
+            return new MyCustomDrawing(xc, yc)
+        default:
+            return undefined
+    }
+}
+```
+
+## SVG Primitives
+
+VibeTrader provides SVG building blocks:
+
+```typescript
+import { Path } from "../../svg/Path"
+import { Circle } from "../../svg/Circle"
+import { Rect } from "../../svg/Rect"
+
+// Path - for lines and curves
+const path = new Path()
+path.moveto(x1, y1)
+path.lineto(x2, y2)
+path.curveto(cx1, cy1, cx2, cy2, x2, y2)
+
+// Circle - for markers
+const circle = new Circle(x, y, radius)
+
+// Rect - for boxes
+const rect = new Rect(x, y, width, height)
+```
+
+## Helper Methods
+
+The `Drawing` base class provides geometry utilities:
+
+```typescript src/lib/charting/drawing/Drawing.tsx
+// Plot a line extending across the chart
+protected plotLine(baseX: number, baseY: number, k: number, path: Path) {
+    const xstart = 0
+    const ystart = this.yOnLine(xstart, baseX, baseY, k)
+    const xend = this.xc.wChart
+    const yend = this.yOnLine(xend, baseX, baseY, k)
+
+    path.moveto(xstart, ystart)
+    path.lineto(xend, yend)
+}
+
+// Plot a vertical line
+protected plotVerticalLine(bar: number, path: Path) {
+    const x = this.xc.xb(bar)
+    path.moveto(x, this.yc.yCanvasLower)
+    path.lineto(x, this.yc.yCanvasUpper)
+}
+
+// Calculate Y on line given X
+protected yOnLine(x: number, baseX: number, baseY: number, k: number) {
+    return (baseY + (x - baseX) * k)
+}
+
+// Calculate distance from point to line
+protected distanceToLine(x: number, y: number, baseX: number, baseY: number, k: number) {
+    return Math.abs(k * x - y + baseY - k * baseX) / Math.sqrt(k * k + 1)
+}
+```
+
+## Rendering States
+
+Drawings can be rendered in different states:
+
+```typescript src/lib/charting/drawing/Drawing.tsx:205
+// Normal state - drawing completed
+renderDrawing(key: Key) {
+    return (
+        <g key={key} className="drawing">
+            {this.plotDrawing().map((seg, n) => seg.render({ key: "seg-" + n }))}
+        </g>
+    )
+}
+
+// With handles - during creation or selection
+renderDrawingWithHandles(key: Key) {
+    return (
+        <g key={key}>
+            <g className="drawing-highlight">
+                {this.plotDrawing().map((seg, n) => seg.render({ key: "seg-" + n }))}
+            </g>
+            <g className="drawing-handle">
+                {this.handles.map((handle, n) => handle.render("handle-" + n))}
+            </g>
+        </g>
+    )
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Performance">
+    - Minimize calculations in `plotDrawing()` - called on every render
+    - Cache computed values when possible
+    - Use simple hit detection for `hits()` method
+    - Limit number of SVG segments
+  </Accordion>
+
+  <Accordion title="User Experience">
+    - Provide visual feedback during creation (stretching)
+    - Use appropriate hit detection thresholds (4-8 pixels)
+    - Show handles when selected
+    - Support keyboard shortcuts (Delete, Escape)
+  </Accordion>
+
+  <Accordion title="Code Organization">
+    - One drawing class per file
+    - Import SVG primitives as needed
+    - Use TypeScript types for type safety
+    - Document complex geometry calculations
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="PineScript Integration" icon="code" href="/dev-guide/pinescript-integration">
+    Combine drawings with PineScript indicators
+  </Card>
+  <Card title="Custom Indicators" icon="chart-line" href="/dev-guide/custom-indicators">
+    Create indicators that complement your drawings
+  </Card>
+</CardGroup>

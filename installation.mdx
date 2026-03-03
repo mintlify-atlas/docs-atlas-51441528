@@ -1,0 +1,312 @@
+---
+title: Installation
+description: Get VibeTrader running on your local machine with Node.js and npm
+---
+
+This guide will walk you through installing VibeTrader on your local development machine.
+
+## Prerequisites
+
+Before installing VibeTrader, ensure you have the following installed:
+
+<Steps>
+  <Step title="Node.js">
+    **Node.js 18.x or higher** is required
+    
+    Download from [nodejs.org](https://nodejs.org/)
+    
+    Verify your installation:
+    ```bash
+    node --version
+    # Should output v18.0.0 or higher
+    ```
+  </Step>
+  <Step title="npm">
+    **npm 9.x or higher** (comes with Node.js)
+    
+    Verify your installation:
+    ```bash
+    npm --version
+    # Should output 9.0.0 or higher
+    ```
+  </Step>
+  <Step title="Git">
+    **Git** for cloning the repository
+    
+    Download from [git-scm.com](https://git-scm.com/)
+    
+    Verify your installation:
+    ```bash
+    git --version
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  VibeTrader uses modern JavaScript features (ES2022) and requires a recent version of Node.js for optimal performance.
+</Note>
+
+## Installation Steps
+
+### 1. Clone the Repository
+
+First, clone the VibeTrader repository from GitHub:
+
+```bash
+git clone https://github.com/dcaoyuan/vibetrader.git
+cd vibetrader
+```
+
+### 2. Install Dependencies
+
+Install all required npm packages:
+
+```bash
+npm install
+```
+
+This will install all dependencies listed in `package.json`, including:
+
+- **React 19** - Frontend framework
+- **React Spectrum** - Adobe's accessible UI components
+- **PineTS** - PineScript compiler for custom indicators
+- **Vite** - Build tool and dev server
+- **TypeScript** - Type checking and compilation
+- **html2canvas** - Screenshot functionality
+- **Temporal polyfill** - Modern date/time handling
+
+<Info>
+  The installation may take a few minutes depending on your internet connection speed.
+</Info>
+
+### 3. Verify Installation
+
+After installation completes, verify everything is set up correctly:
+
+```bash
+npm run build
+```
+
+If the build completes without errors, you're ready to go!
+
+## Project Structure
+
+Once installed, you'll see the following directory structure:
+
+```
+vibetrader/
+├── src/
+│   ├── lib/
+│   │   ├── charting/       # Chart components and views
+│   │   │   ├── view/       # ChartView, KlineView, IndicatorView
+│   │   │   ├── plot/       # Plot types (line, kline, histogram, etc.)
+│   │   │   ├── drawing/    # Drawing tools (Fibonacci, Gann, etc.)
+│   │   │   ├── pane/       # UI panes (AxisX, AxisY, Title)
+│   │   │   └── scalar/     # Y-axis scaling (linear, logarithmic)
+│   │   ├── timeseris/      # Time series management
+│   │   │   ├── TSer.ts     # Time series container
+│   │   │   ├── TFrame.ts   # Timeframe definitions
+│   │   │   ├── TVar.ts     # Time-varying variables
+│   │   │   └── DefaultTSer.ts
+│   │   ├── domain/         # Domain models and data fetchers
+│   │   │   ├── Kline.ts    # OHLCV data structure
+│   │   │   ├── DataFecther.ts  # Multi-source data fetching
+│   │   │   ├── BinanaceData.ts # Binance integration
+│   │   │   └── YFinanceData.ts # Yahoo Finance integration
+│   │   ├── layouts/        # Page layouts
+│   │   ├── svg/           # SVG rendering utilities
+│   │   └── collection/    # Data structures
+│   ├── App.tsx            # Main application component
+│   ├── main.tsx          # Application entry point
+│   └── Env.ts            # Environment configuration
+├── tests/                # Test files
+├── package.json          # Dependencies and scripts
+├── tsconfig.json        # TypeScript configuration
+├── vite.config.ts       # Vite configuration
+└── README.md            # Project documentation
+```
+
+<Tip>
+  Familiarize yourself with the project structure to understand where different features are implemented.
+</Tip>
+
+## Configuration
+
+### Environment Settings
+
+VibeTrader's environment settings are in `src/Env.ts`:
+
+```typescript
+export const dev = true;  // Development mode
+export const source = Source.binance;  // Default data source
+```
+
+You can modify these settings to:
+
+- Switch between development and production mode
+- Change the default data source (Binance, Yahoo Finance, or local)
+
+### Vite Configuration
+
+The Vite configuration in `vite.config.ts` includes:
+
+```typescript
+export default defineConfig({
+  plugins: [
+    macros.vite(),  // Parcel macros for React Spectrum
+    react()
+  ],
+  base: '/vibetrader/',
+  build: {
+    target: ['es2022'],
+    cssMinify: 'lightningcss'
+  }
+});
+```
+
+<Note>
+  The `base` path is set to `/vibetrader/` for GitHub Pages deployment. Change this to `/` if deploying to a root domain.
+</Note>
+
+### TypeScript Configuration
+
+VibeTrader uses TypeScript 5.9+ with strict type checking. The `tsconfig.json` is configured for optimal React development with ES2022 features.
+
+## Dependencies Overview
+
+### Core Dependencies
+
+<CardGroup cols={2}>
+  <Card title="React 19" icon="react">
+    Latest React with improved performance and new hooks
+  </Card>
+  <Card title="React Spectrum" icon="palette">
+    Adobe's accessible design system with 50+ components
+  </Card>
+  <Card title="PineTS" icon="code">
+    PineScript compiler for custom technical indicators
+  </Card>
+  <Card title="Vite" icon="bolt">
+    Lightning-fast build tool with HMR
+  </Card>
+</CardGroup>
+
+### Key Libraries
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| `react` | 19.2.0 | UI framework |
+| `@react-spectrum/s2` | 1.1.0 | Component library |
+| `pinets` | 0.8.12 | PineScript integration |
+| `vite` | 7.2.2 | Build tool |
+| `typescript` | 5.9.3 | Type checking |
+| `html2canvas` | 1.4.1 | Screenshot capture |
+| `temporal-polyfill` | 0.3.0 | Date/time handling |
+
+## Development Tools
+
+### Code Quality
+
+VibeTrader includes ESLint for code quality:
+
+```bash
+npm run lint
+```
+
+This runs ESLint with React and TypeScript plugins to catch common issues.
+
+### Testing
+
+Run the test suite with Vitest:
+
+```bash
+npm test
+```
+
+<Info>
+  Tests are located in the `tests/` directory and use Vitest for fast unit testing.
+</Info>
+
+## Troubleshooting
+
+### Build Errors
+
+**Error: `Cannot find module`**
+
+```bash
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**Error: TypeScript compilation failed**
+
+```bash
+# Ensure TypeScript version is correct
+npm install typescript@~5.9.3
+```
+
+### Installation Issues
+
+**Error: `EACCES` permission denied**
+
+```bash
+# Fix npm permissions (Unix/Mac)
+sudo chown -R $(whoami) ~/.npm
+sudo chown -R $(whoami) /usr/local/lib/node_modules
+```
+
+**Error: Network timeout**
+
+```bash
+# Increase npm timeout
+npm config set fetch-timeout 60000
+npm install
+```
+
+<Warning>
+  If you encounter persistent installation issues, try using a different Node.js version manager like [nvm](https://github.com/nvm-sh/nvm).
+</Warning>
+
+## Platform-Specific Notes
+
+### Windows
+
+On Windows, you may need to:
+
+1. Run your terminal as Administrator
+2. Enable long paths: `git config --system core.longpaths true`
+3. Use PowerShell or Git Bash instead of Command Prompt
+
+### macOS
+
+On macOS, you may need to:
+
+1. Install Xcode Command Line Tools: `xcode-select --install`
+2. Use Homebrew to install Node.js: `brew install node`
+
+### Linux
+
+On Linux, you may need to:
+
+1. Install build essentials: `sudo apt-get install build-essential`
+2. Use nvm to manage Node.js versions
+
+## Next Steps
+
+Now that VibeTrader is installed, you're ready to start the development server!
+
+<Card
+  title="Quick Start Guide"
+  icon="rocket"
+  href="/quickstart"
+>
+  Learn how to run VibeTrader and start trading
+</Card>
+
+## Additional Resources
+
+- [Vite Documentation](https://vitejs.dev/) - Learn about the build tool
+- [React Spectrum](https://react-spectrum.adobe.com/) - Explore the component library
+- [PineTS Documentation](https://www.npmjs.com/package/pinets) - PineScript integration guide
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/) - TypeScript reference
