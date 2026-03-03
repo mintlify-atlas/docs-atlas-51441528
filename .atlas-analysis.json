@@ -1,0 +1,89 @@
+{
+  "projectType": "frontend",
+  "projectName": "VibeTrader",
+  "projectDescription": "Open source AI-friendly trading platform with advanced charting, technical analysis, and PineScript integration",
+  "theme": "aspen",
+  "primaryColor": "#10b981",
+  "lightColor": "#34d399",
+  "darkColor": "#059669",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Get Started",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": ["introduction", "installation", "quickstart"]
+          }
+        ]
+      },
+      {
+        "tab": "User Guide",
+        "groups": [
+          {
+            "group": "Using VibeTrader",
+            "pages": [
+              "user-guide/chart-controls",
+              "user-guide/drawing-tools",
+              "user-guide/data-sources",
+              "user-guide/keyboard-shortcuts"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developer Guide",
+        "groups": [
+          {
+            "group": "Architecture",
+            "pages": [
+              "dev-guide/architecture",
+              "dev-guide/components",
+              "dev-guide/time-series"
+            ]
+          },
+          {
+            "group": "Customization",
+            "pages": [
+              "dev-guide/pinescript-integration",
+              "dev-guide/custom-indicators",
+              "dev-guide/custom-drawings"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "api/chart-view",
+              "api/plot-types",
+              "api/drawing-api",
+              "api/data-fetchers"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Interactive candlestick charting with real-time data",
+    "Technical drawing tools (Fibonacci retracement, Gann angles, trendlines)",
+    "Multiple plot types (line, histogram, fills, shapes, hlines)",
+    "PineScript integration for custom indicators via pinets",
+    "Multi-source data fetching (Binance, Yahoo Finance)",
+    "Advanced time series management system",
+    "Multiple timeframe support",
+    "Comprehensive keyboard shortcuts and mouse controls",
+    "Screenshot and export capabilities"
+  ],
+  "publicApiSurface": [
+    "ChartView",
+    "KlineView",
+    "IndicatorView",
+    "VolumeView",
+    "Drawing tools: LineDrawing, FibonacciRetraceDrawing, GannAnglesDrawing, ParallelDrawing, PolylineDrawing",
+    "Plot types: PlotLine, PlotKline, PlotHistogram, PlotFill, PlotShape, PlotHline, PlotBgcolor",
+    "Data fetchers: fetchData(), fetchSymbolList()",
+    "Time series: TSer, TFrame, TVar, DefaultTSer",
+    "Domain models: Kline, TSerProvider",
+    "Utilities: Normalize, Colors"
+  ]
+}
