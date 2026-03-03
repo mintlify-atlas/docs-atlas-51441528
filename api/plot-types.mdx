@@ -511,6 +511,303 @@ Source: `PlotBgcolor.tsx:20-58`
 
 ---
 
+## PlotVolume
+
+**Location**: `src/lib/charting/plot/PlotVolume.tsx`
+
+Renders trading volume as a histogram with positive and negative bars based on price movement.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="kvar" type="TVar<Kline>" required>
+  Time series variable containing Kline (OHLCV) data
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Example
+
+```tsx
+import PlotVolume from './lib/charting/plot/PlotVolume';
+
+<PlotVolume
+  kvar={klineVar}
+  xc={xc}
+  yc={yc}
+  depth={0}
+/>
+```
+
+### Rendering Details
+
+- **Positive bars** (close >= open): Rendered with `className="positive"`
+- **Negative bars** (close < open): Rendered with `className="negative"`
+- **Bar width**: Auto-adjusts based on available space
+- **Compression**: Displays maximum volume when multiple bars are compressed
+- Bars are drawn from zero to the volume value
+
+Source: `PlotVolume.tsx:14-80`
+
+---
+
+## PlotStepLine
+
+**Location**: `src/lib/charting/plot/PlotStepLine.tsx`
+
+Renders a step line chart where values change in discrete steps rather than diagonal lines.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable with numeric values
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the plot
+</ParamField>
+
+<ParamField path="atIndex" type="number" required>
+  Index of the data in the PineData array
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Options including color and display settings
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Example
+
+```tsx
+import PlotStepLine from './lib/charting/plot/PlotStepLine';
+
+<PlotStepLine
+  tvar={indicatorVar}
+  xc={xc}
+  yc={yc}
+  name="Step Indicator"
+  atIndex={0}
+  depth={0}
+  options={{
+    color: '#2962FF',
+    display: true
+  }}
+/>
+```
+
+### Notes
+
+- Creates horizontal and vertical line segments (no diagonals)
+- Horizontal segment extends to the right edge of the bar
+- Vertical segment drawn at right edge when value changes
+- Useful for displaying discrete state changes
+
+Source: `PlotStepLine.tsx:18-103`
+
+---
+
+## PlotCrossCircles
+
+**Location**: `src/lib/charting/plot/PlotCrossCircles.tsx`
+
+Renders markers as either circles or crosses at data points.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable with numeric values
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the plot
+</ParamField>
+
+<ParamField path="atIndex" type="number" required>
+  Index of the data in the PineData array
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Options including color and style ('style_circles' or 'style_cross')
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### Marker Styles
+
+<ResponseField name="style_circles" type="string">
+  Renders filled circles at each data point
+</ResponseField>
+
+<ResponseField name="style_cross" type="string">
+  Renders cross markers at each data point
+</ResponseField>
+
+### Example
+
+```tsx
+import PlotCrossCircles from './lib/charting/plot/PlotCrossCircles';
+
+<PlotCrossCircles
+  tvar={signalVar}
+  xc={xc}
+  yc={yc}
+  name="Buy Signals"
+  atIndex={0}
+  depth={1}
+  options={{
+    color: '#26a69a',
+    style: 'style_circles'
+  }}
+/>
+```
+
+### Notes
+
+- Circle radius adapts to bar width (minimum 3px)
+- Cross markers have fixed size based on bar width
+- Useful for highlighting specific data points or signals
+
+Source: `PlotCrossCircles.tsx:20-94`
+
+---
+
+## PlotDrawingLine
+
+**Location**: `src/lib/charting/plot/PlotDrawingLine.tsx`
+
+Renders dynamic lines from PineScript's line drawing API, supporting lines created at runtime.
+
+### Props
+
+<ParamField path="xc" type="ChartXControl" required>
+  X-axis control for horizontal positioning
+</ParamField>
+
+<ParamField path="yc" type="ChartYControl" required>
+  Y-axis control for vertical positioning
+</ParamField>
+
+<ParamField path="tvar" type="TVar<PineData[]>" required>
+  Time series variable containing LineObject arrays
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Name of the plot
+</ParamField>
+
+<ParamField path="atIndex" type="number" required>
+  Index of the data in the PineData array
+</ParamField>
+
+<ParamField path="options" type="PlotOptions" required>
+  Plot options
+</ParamField>
+
+<ParamField path="depth" type="number">
+  Z-index depth for layering (optional)
+</ParamField>
+
+### LineObject Interface
+
+Each line is defined by a LineObject with these properties:
+
+<ResponseField name="id" type="number">
+  Unique identifier for the line
+</ResponseField>
+
+<ResponseField name="x1" type="number">
+  X-coordinate of start point (bar index or time)
+</ResponseField>
+
+<ResponseField name="y1" type="number">
+  Y-coordinate of start point (price value)
+</ResponseField>
+
+<ResponseField name="x2" type="number">
+  X-coordinate of end point
+</ResponseField>
+
+<ResponseField name="y2" type="number">
+  Y-coordinate of end point
+</ResponseField>
+
+<ResponseField name="xloc" type="'time' | 'bar_index'">
+  Coordinate system for x values
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  Line color
+</ResponseField>
+
+<ResponseField name="style" type="'style_solid' | 'style_dashed' | 'style_dotted'">
+  Line style
+</ResponseField>
+
+<ResponseField name="width" type="number">
+  Line width in pixels
+</ResponseField>
+
+### Example
+
+```tsx
+// PineScript code that creates dynamic lines
+//@version=5
+indicator("Trend Lines", overlay=true)
+
+var line trendLine = na
+if ta.crossover(close, ta.sma(close, 20))
+    trendLine := line.new(bar_index, low, bar_index + 10, high, 
+                          color=color.green, width=2)
+
+// Rendered automatically by PlotDrawingLine
+```
+
+### Line Styles
+
+- `style_solid`: Continuous line
+- `style_dashed`: Dashed line (4px dash, 3px gap)
+- `style_dotted`: Dotted line (1px dot, 2px gap)
+
+### Notes
+
+- Supports both time-based and bar-index-based coordinates
+- Multiple lines can share the same ID (will be merged)
+- Used by PineScript's `line.new()` function
+
+Source: `PlotDrawingLine.tsx:18-86`
+
+---
+
 ## PlotOptions Interface
 
 Common options interface used by all plot types.
